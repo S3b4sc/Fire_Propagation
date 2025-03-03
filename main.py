@@ -278,6 +278,88 @@ if __name__ == '__main__':
     elif usrChoice == 7:
         saveRoute = routes_dict['voronoi']
         fitting.expFit(dataRoute='data/voronoi/datos.csv',propTimeThreshold=130,saveRoute=saveRoute)
+        
+    elif usrChoice == 8:
+        n = 35    # Amount of values to consider for p
+        m = 5      # Amount of trials per p       
+        
+        try:
+            tessellation = int(input("Choose one: \n1   Squared\n2  Triangular\n3    Hexagonal\n4   Voronoi\n"))
+        except:
+            print('Not a valid option.')    
+        
+        if tessellation == 1:
+            matrix = np.ones((100,100))
+            matrix[50,50] = 2
+            
+            folder_path = data_route['squared']
+            
+            
+            forest = simulation.squareForest(burningThreshold=0.95,occuProba=0.95 ,initialForest=matrix)
+            forest.criticalExponent(save_route=folder_path,
+                                    intervalTol=1e-4,
+                                    n=100,
+                                    m=15,
+                                    n2=100,
+                                    m2=15,
+                                    fixed='bond',
+                                    fixed_values=[0.5,0.6,0.7],
+                                    initial=matrix)
+            
+            
+        elif tessellation == 2:
+            matrix = np.ones((100,100))
+            matrix[50,50] = 2
+            
+            folder_path = data_route['triangular']
+            
+            
+            forest = simulation.triangularForest(burningThreshold=0.95,occuProba=0.95 ,initialForest=matrix)
+            forest.criticalExponent(save_route=folder_path,
+                                    intervalTol=1e-4,
+                                    n=100,
+                                    m=15,
+                                    n2=100,
+                                    m2=15,
+                                    fixed='bond',
+                                    fixed_values=[0.5,0.6,0.7],
+                                    initial=matrix)
+            
+        elif tessellation == 3:
+            matrix = np.ones((100,100))
+            matrix[50,50] = 2
+            
+            folder_path = data_route['hexagon']
+            
+            
+            forest = simulation.heaxgonalForest(burningThreshold=0.95,occuProba=0.95 ,initialForest=matrix)
+            forest.criticalExponent(save_route=folder_path,
+                                    intervalTol=1e-4,
+                                    n=100,
+                                    m=15,
+                                    n2=100,
+                                    m2=15,
+                                    fixed='bond',
+                                    fixed_values=[0.5,0.6,0.7],
+                                    initial=matrix)
+        
+        elif tessellation == 4:
+            
+            # Still on tests
+            nPoints = 10000
+            points = np.random.rand(nPoints, 2)
+            vor = Voronoi(points)
+            folder_path = data_route['voronoi']
+            
+            
+
+            name = 'voronoiCompareProbabilities'
+            imagePath = routes_dict['voronoi'] + name
+            forest = voronoi_fire.voronoiFire(burningThreshold=0.95, occuProba=0.95, voronoi=vor, initialFire=1)
+            
+        
+        else:
+            print('That is not an option, try again.')
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     

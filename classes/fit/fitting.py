@@ -26,5 +26,3 @@ def expFit(data, propTimeThreshold:int):
 
 
 
-
-

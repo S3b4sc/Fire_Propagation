@@ -9,8 +9,10 @@ import seaborn as sns
 from scipy.optimize import curve_fit
 import os
 import joblib
+from scipy.stats import linregress
 
 from classes.fit.fitting import expFit
+from scipy.ndimage import label
 
 class voronoiFire():
     def __init__(self,
@@ -170,6 +172,53 @@ class voronoiFire():
             # if perimeter is higher than max_length, asign status 0
             if perimeter > max_length:
                 self.status[i] = 0
+    def percolationThreshold(self,n:int,m:int,  
+                             plot:bool=False, 
+                             fixed:str = 'bond', 
+                             fixed_value:float=1,
+                             saveRoute:str=''):
+        '''
+         args: 
+         - n: amount of values for p to consider in the interval 0 to 1
+         - m: amount ot tials for each p
+         - matrix: Initial fire matrix
+        '''
+        percolationResults = np.zeros((n,m))
+        P = np.linspace(0,1,n)
+        
+        fixed_status = np.copy(self.status)
+        
+        for i,p in enumerate(P):
+            for j in range(m):
+                self.status = np.copy(fixed_status)
+                # If fixed is bond we compute the p site critical value
+                if fixed == 'bond':
+                    _ = self.propagateFire(p, fixed_value)
+                # If not, we calculate the p bond critical value
+                else:
+                    _ = self.propagateFire(fixed_value,p)
+                percolationResults[i,j] = percolation_check(self.status)
+                
+        # Delta of p
+        delta = np.round(1/n,2)
+        
+        # Calculate the frequency of percolation for each p
+        percolation_frequencies = percolationResults.mean(axis=1)
+        
+        # Get the percolation threshold
+        p_c = np.round(P[percolation_frequencies > 0.5][0],2)
+
+        if plot:
+            # Plot
+            plt.plot(P, percolation_frequencies, marker='o')
+            plt.xlabel("$P$")
+            plt.ylabel("Percolation Frequency")
+            plt.title("Percolation Probability vs. p")
+            plt.grid()
+            plt.text(0.63, 1.15, f'Percolation threshold: {p_c} +- {delta}', fontsize=10, color="blue")
+            plt.savefig(saveRoute + '.png')
+        
+        return p_c
     
     def compareBondSite(self,resolution:int,n_iter:int, imagePath, folder_path, file_name,propTimeThreshold:int=120):
         # Verificar si la carpeta existe, si no, crearla
@@ -249,3 +298,138 @@ class voronoiFire():
         ax.plot(x_indices, y_indices,'r-',label='fit: %5.3f exp( - %5.3f p_site) + %5.3f' % tuple(popt), zorder=10)
         plt.legend()
         plt.savefig(imagePath+'.png', format='png')
+        
+    def criticalExponent(self,save_route:str, intervalTol:float, n:int,m:int,n2:int,m2:int, fixed:str,fixed_values:list):
+        '''
+        the critical exponents are saved on a matrix with a shape (1,len(fixed_values),2)
+        On the first layer we firn the left critical exponents, and on the sencod, the rigth ones, each column
+        is a fixed value.
+        args:
+        n2: int -> Number of points on the interval to find the critical exponent
+        m2: int -> Number of simulations with fixed p_bond and p_site to compute average propagation time
+        '''
+        # fiexed = 1 is for fixing p_bond and varying p_site
+        fixed_status = np.copy(self.status)
+        # Critical thresholds
+        p_c = np.zeros(len(fixed))
+        for i in range(p_c):
+            self.status = np.copy(fixed_status)
+            p_c[i] = self.percolationThreshold(n=n,m=m, matrix=self.forest,fixed=fixed,fixed_value=fixed_values[i])
+        
+        # Store time values values for regression
+        tabular_info = np.zeros((n2,len(fixed_values)),2)
+        # Store p values for regression
+        p_values = np.zeros((n2,len(fixed_values)),2)
+        
+        
+        # Compute for each fixed value
+        for j,fixed_value in enumerate(fixed_values):
+            # Critical exponent from left
+            P_minus = np.linspace(p_c[j] * (1-intervalTol), p_c[j], n2)
+            p_values[:,j,0] = P_minus
+            # Critical exponent from right
+            P_plus = np.linspace(p_c[j], p_c[j] * (intervalTol + 1), n2)
+            p_values[:,j,1] = P_plus
+            # Store average times
+            average_t_minus = np.zeros(n2)
+            average_t_plus = np.zeros(n2)
+            
+            for i,(p,p_plus) in enumerate(zip(P_minus,P_plus)):
+                t_minus = np.zeros(m2)
+                t_plus = np.zeros(m2)
+                # Calculate the average propagation time
+                
+                # For fixed p_bond
+                if fixed == 'bond':
+                    # For left critical exponent
+                    for k in range(m2):
+                        self.status = np.copy(fixed_status)
+                        t_minus[k] = self.propagateFire(ps=p,pb=fixed_value)
+
+                    average_t_minus[i] = t_minus.mean()
+                    
+                    # for right critical exponent
+                    for k in range(m2):
+                        self.status = np.copy(fixed_status)
+                        t_plus[k] = self.propagateFire(ps=p_plus,pb=fixed_value)
+
+                    average_t_plus[i] = t_plus.mean()
+                    
+                    
+                # For fixed P_site
+                else:
+                    # For left critical exponent
+                    for k in range(m2):
+                        self.status = np.copy(fixed_status)
+                        t_minus[k] = self.propagateFire(ps=fixed_value,pb=p)
+
+                    average_t_minus[i] = t_minus.mean()
+                    
+                    # for right critical exponent
+                    for k in range(m2):
+                        self.status = np.copy(fixed_status)
+                        t_plus[k] = self.propagateFire(ps=fixed_value,pb=p_plus)
+
+                    average_t_plus[i] = t_plus.mean()
+                    
+                    
+            # Store the propagation time for each fixed value for left critical exponent   
+            tabular_info[:,j,0] = average_t_minus[:]
+            # Store the propagation time for each fixed value for right critical exponent
+            tabular_info[:,j,1] = average_t_plus[:]
+            
+        # Compute logarithm
+        log_t_data = np.log(tabular_info)
+        log_p_values = np.log(p_values)
+        
+        # Space to store critical exponents
+        critical_exponents = np.zeros((1,len(fixed_values),2))
+        
+        
+        for i in range(len(fixed_values)):
+            # Calculate and store left critical exponents
+            slope_minus, intercept_minus, r_value_minus, p_value_minus, std_err_minus = linregress(log_t_data[:,i,0], log_p_values[:,i,0])
+            critical_exponents[0,i,0] = slope_minus
+            
+            # Calculate and store rigth critical exponents
+            slope_plus, intercept_plus, r_value_plus, p_value_plus, std_err_plus = linregress(log_t_data[:,i,1], log_p_values[:,i,1])
+            critical_exponents[0,i,1] = slope_plus
+            
+        # Reshape data to save as a csv
+        left_t_exponents_data = pd.DataFrame(log_t_data[:,:,0])
+        rigt_t_exponents_data = pd.DataFrame(log_t_data[:,:,1])
+        
+        left_p_exponents_data = pd.DataFrame(log_p_values[:,:,0])
+        rigt_p_exponents_data = pd.DataFrame(log_p_values[:,:,1])
+        
+        left_critical_exponents = pd.DataFrame(critical_exponents[:,:,0])
+        rigth_critical_exponents = pd.DataFrame(critical_exponents[:,:,1])
+        
+        left_t_exponents_data.to_csv(save_route + 'left_t_exponents_data_' + {fixed} + '.csv')
+        rigt_t_exponents_data.to_csv(save_route + 'rigt_t_exponents_data_' + {fixed} + '.csv')
+        left_p_exponents_data.to_csv(save_route + 'left_p_exponents_data_' + {fixed} + '.csv')
+        rigt_p_exponents_data.to_csv(save_route + 'rigt_p_exponents_data_' + {fixed} + '.csv')
+        
+        left_critical_exponents.to_csv(save_route + 'left_critical_exponents_' + {fixed} + '.csv')
+        rigth_critical_exponents.to_csv(save_route + 'rigth_critical_exponents_' + {fixed} + '.csv')    
+        
+def percolation_check(array):
+    # Identificar regiones conectadas de árboles quemados, representados por el número 3
+    labeled_array, num_features = label(array == 3)
+    
+    # Obtener las etiquetas presentes en los bordes superior e inferior (percolación vertical)
+    first_row_labels = set(labeled_array[0, :])
+    last_row_labels = set(labeled_array[-1, :])
+    
+    # Verificar si alguna etiqueta de la primera fila está en la última fila (percolación vertical)
+    vertical_common_labels = first_row_labels.intersection(last_row_labels)
+    
+    # Obtener las etiquetas presentes en los bordes izquierdo y derecho (percolación horizontal)
+    first_col_labels = set(labeled_array[:, 0])
+    last_col_labels = set(labeled_array[:, -1])
+    
+    # Verificar si alguna etiqueta de la primera columna está en la última columna (percolación horizontal)
+    horizontal_common_labels = first_col_labels.intersection(last_col_labels)
+    
+    # Si hay etiquetas en común en cualquiera de las direcciones, hay percolación
+    return bool(vertical_common_labels - {0}) or bool(horizontal_common_labels - {0})  # Excluir 0 porque no es una región etiquetada
