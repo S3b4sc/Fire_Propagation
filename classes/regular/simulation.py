@@ -79,6 +79,7 @@ class forestFire():
                 
         
                 thereIsFire = False if np.sum(newBurningTrees) == 0 else True
+            #print(self.historicalFirePropagation)
             
             #print('Fire extinguished')
             return propagationTime
@@ -197,7 +198,12 @@ class forestFire():
         return p_c
     #-------------------------------------------------------------------------------------------------
     
-    def criticalExponent(self,save_route:str, intervalTol:float, n:int,m:int,n2:int,m2:int, fixed:str,fixed_values:list,initial:np.ndarray):
+    def criticalExponent(self,
+                         save_route:str, 
+                         intervalTol:float, 
+                         n:int,m:int,n2:int,m2:int,
+                         fixed:str,fixed_values:list,
+                         initial:np.ndarray)->None:
         '''
         the critical exponents are saved on a matrix with a shape (1,len(fixed_values),2)
         On the first layer we firn the left critical exponents, and on the sencod, the rigth ones, each column
@@ -209,15 +215,16 @@ class forestFire():
         # fiexed = 1 is for fixing p_bond and varying p_site
         
         # Critical thresholds
-        p_c = np.zeros(len(fixed))
-        for i in range(p_c):
+        p_c = np.zeros(len(fixed_values))
+        for i,p in enumerate(fixed_values):
             self.forest = np.copy(initial)
-            p_c[i] = self.percolationThreshold(n=n,m=m, matrix=self.forest,fixed=fixed,fixed_value=fixed_values[i])
+            p_c[i] = self.percolationThreshold(n=n,m=m, matrix=self.forest,plot=False,fixed=fixed,fixed_value=fixed_values[i])
+
         
         # Store time values values for regression
-        tabular_info = np.zeros((n2,len(fixed_values)),2)
+        tabular_info = np.zeros((n2,len(fixed_values),2))   # 1st layer for leaft critical exponent and 2nd for roght critical exponent
         # Store p values for regression
-        p_values = np.zeros((n2,len(fixed_values)),2)
+        p_values = np.zeros((n2,len(fixed_values),2))
         
         
         # Compute for each fixed value
@@ -232,7 +239,7 @@ class forestFire():
             average_t_minus = np.zeros(n2)
             average_t_plus = np.zeros(n2)
             
-            for i,(p,p_plus) in enumerate(zip(P_minus,P_plus)):
+            for i,(p_minus,p_plus) in enumerate(zip(P_minus,P_plus)):
                 t_minus = np.zeros(m2)
                 t_plus = np.zeros(m2)
                 # Calculate the average propagation time
@@ -242,7 +249,7 @@ class forestFire():
                     # For left critical exponent
                     for k in range(m2):
                         self.forest = np.copy(initial)
-                        t_minus[k] = self.propagateFire(ps=p,pb=fixed_value)
+                        t_minus[k] = self.propagateFire(ps=p_minus,pb=fixed_value)
 
                     average_t_minus[i] = t_minus.mean()
                     
@@ -259,7 +266,7 @@ class forestFire():
                     # For left critical exponent
                     for k in range(m2):
                         self.forest = np.copy(initial)
-                        t_minus[k] = self.propagateFire(ps=fixed_value,pb=p)
+                        t_minus[k] = self.propagateFire(ps=fixed_value,pb=p_minus)
 
                     average_t_minus[i] = t_minus.mean()
                     
@@ -272,9 +279,9 @@ class forestFire():
                     
                     
             # Store the propagation time for each fixed value for left critical exponent   
-            tabular_info[:,j,0] = average_t_minus[:]
+            tabular_info[:,j,0] = average_t_minus[:].copy()
             # Store the propagation time for each fixed value for right critical exponent
-            tabular_info[:,j,1] = average_t_plus[:]
+            tabular_info[:,j,1] = average_t_plus[:].copy()
             
         # Compute logarithm
         log_t_data = np.log(tabular_info)
@@ -303,13 +310,13 @@ class forestFire():
         left_critical_exponents = pd.DataFrame(critical_exponents[:,:,0])
         rigth_critical_exponents = pd.DataFrame(critical_exponents[:,:,1])
         
-        left_t_exponents_data.to_csv(save_route + 'left_t_exponents_data_' + {fixed} + '.csv')
-        rigt_t_exponents_data.to_csv(save_route + 'rigt_t_exponents_data_' + {fixed} + '.csv')
-        left_p_exponents_data.to_csv(save_route + 'left_p_exponents_data_' + {fixed} + '.csv')
-        rigt_p_exponents_data.to_csv(save_route + 'rigt_p_exponents_data_' + {fixed} + '.csv')
+        left_t_exponents_data.to_csv(save_route + 'left_t_exponents_data_fixed_' + fixed + '.csv')
+        rigt_t_exponents_data.to_csv(save_route + 'rigt_t_exponents_data_fixed_' + fixed + '.csv')
+        left_p_exponents_data.to_csv(save_route + 'left_p_exponents_data_fixed_' + fixed + '.csv')
+        rigt_p_exponents_data.to_csv(save_route + 'rigt_p_exponents_data_fixed_' + fixed + '.csv')
         
-        left_critical_exponents.to_csv(save_route + 'left_critical_exponents_' + {fixed} + '.csv')
-        rigth_critical_exponents.to_csv(save_route + 'rigth_critical_exponents_' + {fixed} + '.csv')
+        left_critical_exponents.to_csv(save_route + 'left_critical_exponents_fixed_' + fixed + '.csv')
+        rigth_critical_exponents.to_csv(save_route + 'rigth_critical_exponents_fixed_' + fixed + '.csv')
     
         
     def compareBondSite(self,resolution:int,n_iter:int, imagePath, folder_path, file_name, matrix,propTimeThreshold:int=120):

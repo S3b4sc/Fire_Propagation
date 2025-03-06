@@ -126,7 +126,7 @@ if __name__ == '__main__':
             name = 'SquaredPercolationThreshold'
             route = routes_dict['squared'] +  name
             forest = simulation.squareForest(burningThreshold=0.95,occuProba=0.95 ,initialForest=matrix, saveHistoricalPropagation=True)
-            p_c = forest.percolationThreshold(route,n,m,matrix,True)
+            p_c = forest.percolationThreshold(n,m,matrix,True,"site", fixed_value=1,saveRoute=route)
             print("The percolation threshold is: ",p_c)
             
             
@@ -135,7 +135,7 @@ if __name__ == '__main__':
             name = 'TriangularPercolationThreshold'
             route = routes_dict['triangular'] + name 
             forest = simulation.triangularForest(burningThreshold=0.55, occuProba=1 ,initialForest=matrix)
-            p_c = forest.percolationThreshold(route,n,m,matrix,True)
+            p_c = forest.percolationThreshold(n,m,matrix,True,"site", saveRoute=route)
             print("The percolation threshold is: ",p_c)
             
         elif tessellation == 3:
@@ -143,7 +143,7 @@ if __name__ == '__main__':
             name = 'hexagonalPercolationThreshold'
             route = routes_dict['hexagon'] + name
             forest = simulation.heaxgonalForest(burningThreshold=0.55, occuProba=1 ,initialForest=matrix)
-            p_c = forest.percolationThreshold(route,n,m,matrix,True)
+            p_c = forest.percolationThreshold(n,m,matrix,True,"site", saveRoute=route)
             print("The percolation threshold is: ",p_c)
         
         elif tessellation == 4:
@@ -303,7 +303,7 @@ if __name__ == '__main__':
                                     n2=100,
                                     m2=15,
                                     fixed='bond',
-                                    fixed_values=[0.5,0.6,0.7],
+                                    fixed_values=[0.65,0.75,0.85],
                                     initial=matrix)
             
             
@@ -343,23 +343,24 @@ if __name__ == '__main__':
                                     fixed_values=[0.5,0.6,0.7],
                                     initial=matrix)
         
-        elif tessellation == 4:
-            
-            # Still on tests
-            nPoints = 10000
-            points = np.random.rand(nPoints, 2)
-            vor = Voronoi(points)
-            folder_path = data_route['voronoi']
-            
-            
-
-            name = 'voronoiCompareProbabilities'
-            imagePath = routes_dict['voronoi'] + name
-            forest = voronoi_fire.voronoiFire(burningThreshold=0.95, occuProba=0.95, voronoi=vor, initialFire=1)
+        #elif tessellation == 4:
+        #    
+        #    # Still on tests
+        #    nPoints = 10000
+        #    points = np.random.rand(nPoints, 2)
+        #    vor = Voronoi(points)
+        #    folder_path = data_route['voronoi']
+        #    
+        #    
+#
+        #    name = 'voronoiCompareProbabilities'
+        #    imagePath = routes_dict['voronoi'] + name
+        #    forest = voronoi_fire.voronoiFire(burningThreshold=0.95, occuProba=0.95, voronoi=vor, initialFire=1)
             
         
         else:
             print('That is not an option, try again.')
+            
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     
