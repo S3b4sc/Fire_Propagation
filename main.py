@@ -8,6 +8,7 @@ import numpy as np
 from scipy.spatial import Voronoi
 
 from scripts.routes import routes_dict, data_route
+import matplotlib.pyplot as plt
 
 
 if __name__ == '__main__':
@@ -114,7 +115,7 @@ if __name__ == '__main__':
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     elif usrChoice == 3:
         n = 35    # Amount of values to consider for p
-        m = 5      # Amount of trials per p        
+        m = 20      # Amount of trials per p        
         
         try:
             tessellation = int(input("Choose one: \n1   Squared\n2  Triangular\n3    Hexagonal\n4   Voronoi\n"))
@@ -127,6 +128,8 @@ if __name__ == '__main__':
             route = routes_dict['squared'] +  name
             forest = simulation.squareForest(burningThreshold=0.95,occuProba=0.95 ,initialForest=matrix, saveHistoricalPropagation=True)
             p_c = forest.percolationThreshold(n,m,matrix,True,"site", fixed_value=1,saveRoute=route)
+            #p_c = forest.estimate_percolation_threshold(m=m,matrix=matrix)
+           
             print("The percolation threshold is: ",p_c)
             
             
@@ -135,7 +138,7 @@ if __name__ == '__main__':
             name = 'TriangularPercolationThreshold'
             route = routes_dict['triangular'] + name 
             forest = simulation.triangularForest(burningThreshold=0.55, occuProba=1 ,initialForest=matrix)
-            p_c = forest.percolationThreshold(n,m,matrix,True,"site", saveRoute=route)
+            p_c = forest.percolationThreshold(n,m,matrix,False,"site",fixed_value=1,saveRoute=route)
             print("The percolation threshold is: ",p_c)
             
         elif tessellation == 3:
