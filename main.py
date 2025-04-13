@@ -11,10 +11,12 @@ from scripts.routes import routes_dict, data_route
 import matplotlib.pyplot as plt
 
 
+import time
+
 if __name__ == '__main__':
     usrChoice = menu()
-    matrix = np.ones((100,100))
-    matrix[50,50] = 2
+    matrix = np.ones((10,10))
+    matrix[5,5] = 2
   
   
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  
@@ -30,8 +32,11 @@ if __name__ == '__main__':
             name = 'squaredAnimation_test'
             route = routes_dict['squared'] +  name
             forest = simulation.squareForest(burningThreshold=0.95,occuProba=0.95 ,initialForest=matrix, saveHistoricalPropagation=True)
-            forest.animate(route)    
-            
+            #forest.animate(route)    
+            start = time.time()
+            history, steps = forest.propagateFire(ps=1,pb=1)
+            print("Execution time:", time.time() - start)
+            print(steps)
             
         elif tessellation == 2:
             
@@ -115,7 +120,8 @@ if __name__ == '__main__':
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     elif usrChoice == 3:
         n = 35    # Amount of values to consider for p
-        m = 20      # Amount of trials per p        
+        m = 40      # Amount of trials per p        
+        n_iter = 3
         
         try:
             tessellation = int(input("Choose one: \n1   Squared\n2  Triangular\n3    Hexagonal\n4   Voronoi\n"))
@@ -127,8 +133,9 @@ if __name__ == '__main__':
             name = 'SquaredPercolationThreshold'
             route = routes_dict['squared'] +  name
             forest = simulation.squareForest(burningThreshold=0.95,occuProba=0.95 ,initialForest=matrix, saveHistoricalPropagation=True)
-            p_c = forest.percolationThreshold(n,m,matrix,True,"site", fixed_value=1,saveRoute=route)
-            #p_c = forest.estimate_percolation_threshold(m=m,matrix=matrix)
+            #p_c = forest.percolationThreshold(n,m,matrix,True,"site", fixed_value=1,saveRoute=route)
+            p_c = forest.estimate_percolation_threshold(m=m, matrix=matrix, n_iter=n_iter)
+            
            
             print("The percolation threshold is: ",p_c)
             
@@ -138,7 +145,9 @@ if __name__ == '__main__':
             name = 'TriangularPercolationThreshold'
             route = routes_dict['triangular'] + name 
             forest = simulation.triangularForest(burningThreshold=0.55, occuProba=1 ,initialForest=matrix)
-            p_c = forest.percolationThreshold(n,m,matrix,False,"site",fixed_value=1,saveRoute=route)
+            #p_c = forest.percolationThreshold(n,m,matrix,False,"site",fixed_value=1,saveRoute=route)
+            p_c = forest.estimate_percolation_threshold(m=m, matrix=matrix, n_iter=n_iter)
+            
             print("The percolation threshold is: ",p_c)
             
         elif tessellation == 3:
@@ -158,15 +167,17 @@ if __name__ == '__main__':
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     elif usrChoice == 4:
-        n = 20      # Amount of values to consider for p in the range (0,1)to fin p_c
-        m1 = 5      # Amount of trials per p        
-        m2 = 30     # Amount of trials per p to find M
-        saveRoute = './graphs/percolationThreshold.png'
+        n = 20      # Amount of values to consider for p in the range (0,1) to find p_c
+        m = 10      # Amount of trialas per each p to find p_c
+        
+        n2 = 20      # Amount of values to consider for p 
+        m2 = 10     # 
+        saveRoute = './data/squared/'
         epsilon = 0.002*6
         delta = 0.002
         
         forest = simulation.squareForest(burningThreshold=0.55,occuProba=1. , initialForest=matrix)
-        criticalExponent = forest.criticalExponent(saveRoute,epsilon,delta,n,m1,m2,matrix)
+        criticalExponent = forest.criticalExponent(saveRoute,epsilon,delta,n,m,n2,m2,matrix)
         print(criticalExponent)
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -182,50 +193,50 @@ if __name__ == '__main__':
         if tessellation == 1:
             
             folder_path = data_route['squared']
-            file_name = "datos.csv"
-            name = 'squaredCompareProbabilities'
+            file_name = "datos_alta_resolucion.csv"
+            name = 'squaredCompareProbabilities_alta_resolucion'
             imagePath = routes_dict['squared'] + name
             propTimeThreshold = 150
             
             forest = simulation.squareForest(burningThreshold=0.95,occuProba=0.95 ,initialForest=matrix)
-            forest.compareBondSite(200,15,imagePath,folder_path, file_name,matrix,propTimeThreshold) 
+            forest.compareBondSite(1000,imagePath,folder_path, file_name,matrix, 'squared', propTimeThreshold) 
             
             
         elif tessellation == 2:
             
             folder_path = data_route['triangular']
-            file_name = "datos.csv"
-            name = 'triangularCompareProbabilities'
+            file_name = "datos_alta_resolucion.csv"
+            name = 'triangularCompareProbabilities_alta_resolucion'
             imagePath = routes_dict['triangular'] + name
             propTimeThreshold = 215
             
             forest = simulation.triangularForest(burningThreshold=0.95,occuProba=0.95 ,initialForest=matrix)
-            forest.compareBondSite(200,15,imagePath,folder_path, file_name,matrix,propTimeThreshold) 
+            forest.compareBondSite(1000,imagePath,folder_path, file_name,matrix, 'triangular',propTimeThreshold) 
             
         elif tessellation == 3:
             
             folder_path = data_route['hexagon']
-            file_name = "datos.csv"
-            name = 'hexagonalCompareProbabilities'
+            file_name = "datos_alta_resolucion.csv"
+            name = 'hexagonalCompareProbabilities_alta_resolucion'
             imagePath = routes_dict['hexagon'] + name
             propTimeThreshold = 150
             
             forest = simulation.heaxgonalForest(burningThreshold=0.95,occuProba=0.95 ,initialForest=matrix)
-            forest.compareBondSite(200,15,imagePath,folder_path, file_name,matrix,propTimeThreshold) 
+            forest.compareBondSite(1000,imagePath,folder_path, file_name,matrix, 'hexagonal',propTimeThreshold) 
         
         elif tessellation == 4:
             nPoints = 10000
             points = np.random.rand(nPoints, 2)
             vor = Voronoi(points)
             folder_path = data_route['voronoi']
-            file_name = "datos.csv"
+            file_name = "datos_alta_resolucion.csv"
             propTimeThreshold = 150
             
 
-            name = 'voronoiCompareProbabilities'
+            name = 'voronoiCompareProbabilities_alta_resolucion'
             imagePath = routes_dict['voronoi'] + name
             forest = voronoi_fire.voronoiFire(burningThreshold=0.95, occuProba=0.95, voronoi=vor, initialFire=1)
-            forest.compareBondSite(200,15,imagePath,folder_path, file_name,propTimeThreshold) 
+            forest.compareBondSite(1000,imagePath,folder_path, file_name, propTimeThreshold) 
         
         else:
             print('That is not an option, try again.')

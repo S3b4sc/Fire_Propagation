@@ -12,6 +12,9 @@ import scipy.stats as stats
 from classes.regular.auxiliarfunc import percolation_check, Apply_occupation_proba, log_criteria_niter
 from classes.fit.fitting import expFit
 
+import classes.regular.fire_plus as fire
+
+from numba import njit
 
 zeroArray = np.zeros(1)
 
@@ -47,71 +50,10 @@ class forestFire():
         if np.sum(self.forest == 2) == 0:
             print('The forest does not have burning trees')
         else:
-            
-            thereIsFire = True
-            propagationTime = 0
-            while thereIsFire:
-                # Record time propagation in terms of iterations
-                propagationTime += 1
-                
-                neighboursTensor = self.createNeighbourTensor()
-                couldPropagate = neighboursTensor == 2
-                amoungOfBurningNeighbours = np.sum(couldPropagate, axis=0)
-                cellsToEvaluate = amoungOfBurningNeighbours > 0
-                burningTrees = (self.forest == 2)
-
-                probabilityMatrixForest = np.random.rand(*self.forestSize)
-                probabilityMatrixForest[cellsToEvaluate] = 1. - (1. - probabilityMatrixForest[cellsToEvaluate]) ** (1/amoungOfBurningNeighbours[cellsToEvaluate])
-
-                #-----------------------------------------------------------------------------------------------------
-                # Here could appear a function to modificate probabilityMatrixForest depending of wind and topography
-                #-----------------------------------------------------------------------------------------------------
-
-                couldBurn = (probabilityMatrixForest <= pb)
-
-                newBurningTrees = (self.forest == 1) & couldBurn & np.logical_or.reduce(couldPropagate,axis=0)
-
-                # Update forest matrix for the next step
-                self.forest[burningTrees] = 3
-                self.forest[newBurningTrees] = 2
-
-                # Only save historical data to plot if required
-                if (self.saveHistoricalPropagation):
-                    self.historicalFirePropagation.append(np.copy(self.forest))
-                
+            final_forest, steps = fire.propagate_fire_cpp(self.forest.astype(np.int32), pb, self.neighbours, self.neighboursBoolTensor.astype(np.int32), True)
+            self.forest = final_forest
+            return steps
         
-                thereIsFire = False if np.sum(newBurningTrees) == 0 else True
-            #print(self.historicalFirePropagation)
-            
-            #print('Fire extinguished')
-            return propagationTime
-        
-        
-    def createNeighbourTensor(self):
-        neighborhoodSize = len(self.neighbours)
-        tensor = np.zeros((neighborhoodSize, *self.forestSize))
-
-        for i, neigh in enumerate(self.neighbours):
-            x,y = neigh
-            tensor[i] = np.roll(self.forest, (-x,y), axis=(1,0))
-            if x:
-                if x == 1.:
-                    tensor[i, : , -1 ] = 0
-                elif x == -1.:
-                    tensor[i, : , 0 ] = 0
-                else:
-                    continue # Maybe Another condition and method for second neighbours and more
-            if y:
-                if y == 1.:
-                    tensor[i, 0 , : ] = 0
-                elif y == -1.:
-                    tensor[i, -1 , : ] = 0
-                else:
-                    continue # Maybe Another condition and method for second neighbours and more
-            else:
-                continue
-        tensor = tensor * self.neighboursBoolTensor
-        return tensor
 
     #-------------------------------------------------------------------------------------------------
     # Methods to calculate statistic params of many simulations
@@ -149,8 +91,8 @@ class forestFire():
         plt.xlabel('$P$')
         plt.ylabel('$t(p)$')
         plt.title(r'Burning time as a function of p\nErrorbar = 1$\sigma$')
-        #plt.savefig(saveRoute + '.png')
-        plt.show()
+        plt.savefig(saveRoute + '.png')
+        #plt.show()
         
     def percolationThreshold(self,n:int,m:int, 
                              matrix:np.ndarray, 
@@ -199,40 +141,50 @@ class forestFire():
         
         return p_c
     
-    def estimate_percolation_threshold(self,m, matrix,lr):
+    def estimate_percolation_threshold(self,m, matrix,n_iter):
         """
         Estima el valor crítico de p utilizando un ajuste con una distribución chi-cuadrado ajustable.
 
-        Parámetros:
+        Args:
         - p_values: lista de valores de p a probar.
         - m: número de simulaciones por cada p.
         - matrix: matriz inicial del incendio.
+        - n_iter: Cantidad de iteraciones para convergencia.
 
-        Retorna:
+        Returns:
         - pc: valor crítico estimado.
         - popt: parámetros ajustados (A, pc, k, C).
         - p_values: valores de p usados en el ajuste.
         - times: tiempos promedio de propagación.
         """
-        times = []
-        Pc = 0.1
-        while Pc < 1:
-            t_sim = np.zeros(m)
-            for i in range(m):
-                self.forest = matrix.copy()
-                t_sim[i] = self.propagateFire(ps=1, pb=Pc)  
-            times.append(np.mean(t_sim))
-            delta = lr * ()/()
-            Pc += delta
-
-        times = np.array(times)
-
-
-
-        return Pc
         
-    
-    
+        size = 0.1
+        probalities = np.arange(0.1,1,size)
+
+        n = len(probalities)
+        pcs = np.zeros(n_iter)
+        for i in range(n_iter):
+            
+            print("iteracion: ",i)
+            times = np.zeros(n)
+
+            for p_index,p in enumerate(probalities):
+                lista = np.zeros(m)
+                for s in range(m):
+                    self.forest = matrix.copy()
+                    lista[s] = self.propagateFire(1,p)
+                times[p_index] = np.mean(lista)
+            
+            pivot = probalities[np.argmax(times)]
+            print(pivot)
+            pcs[i] = pivot
+            probalities = np.arange(pivot-size*5,pivot+size*5,size)
+            size = size/10
+            n = len(probalities)
+        
+        Pc = pcs[-1]
+        print(pcs)
+        return Pc
 
 
 
@@ -500,7 +452,10 @@ class forestFire():
         
             
         
-    def compareBondSite(self,resolution:int,n_iter:int, imagePath, folder_path, file_name, matrix,propTimeThreshold:int=120):
+    def compareBondSite(self,resolution:int, imagePath,
+                        folder_path, file_name, matrix,
+                        tesellation_type:str,
+                        propTimeThreshold:int=120):
         # Verificar si la carpeta existe, si no, crearla
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
@@ -513,7 +468,7 @@ class forestFire():
             print("Archivo no encontrado. Creando archivo .csv...")
             p_site = np.linspace(0, 1., resolution)  # Valores de 0 a 1 con paso 0.1
             p_bond = np.linspace(0, 1., resolution)  # Valores de 0 a 1 con paso 0.1
-            P_site, P_bond = np.meshgrid(p_site, p_bond)
+            P_bond, P_site = np.meshgrid(p_bond, p_site)
 
             # Load to the model for personalized niters
             rf_model = joblib.load(folder_path  + '3d_regression_model.pkl')
@@ -525,7 +480,7 @@ class forestFire():
                 for pb in p_bond:
                     
                     # Apply criteria for n_iter
-                    expected_gradient = rf_model.predict(np.array([[pb,ps]]))
+                    expected_gradient = rf_model.predict(np.array([[ps,pb]]))
                     n_iter = log_criteria_niter(expected_gradient)
                     
                     times_for_average = np.ones(n_iter, dtype=int)
@@ -550,9 +505,13 @@ class forestFire():
 
         # Crear un mapa de calor
         print("Generando mapa de calor...")
-        heatmap_data = data.pivot_table(index='P_site', columns='P_bond', values='time')
+        heatmap_data = data.pivot_table(index='P_bond', columns='P_site', values='time')
         plt.figure(figsize=(10, 8))
-        ax = sns.heatmap(heatmap_data, cmap='viridis', cbar_kws={'label': 'Valor de tiempo'})
+        ax = sns.heatmap(heatmap_data, cmap='viridis', cbar_kws={'label': '\nTime (a.u)'})
+
+        # Customize the size of the colorbar label
+        cbar = ax.collections[0].colorbar
+        cbar.set_label('\nTime (a.u)', fontsize=15)
 
         # Configurar ticks manualmente
         ticks = np.arange(0, 1.1, 0.1)  # De 0 a 1 en pasos de 0.1
@@ -570,12 +529,13 @@ class forestFire():
         x_indices = x * (heatmap_data.shape[1] - 1)  # Scale x values to heatmap indices
         y_indices = function(x,*popt) * (heatmap_data.shape[0] - 1)  # Scale y values to heatmap indices
 
-        ax.plot(x_indices, y_indices,'r-',label='fit: %5.3f exp( - %5.3f p_site) + %5.3f' % tuple(popt), zorder=10)
+        ax.plot(x_indices, y_indices,'r-',label='fit: $%5.1f \\, exp( - %5.1f  P_{occupancy}) + %5.1f$' % tuple(popt), zorder=10)
 
-        plt.title("Mapa de calor de los datos (p_site, p_bond, time)")
-        plt.xlabel("p_site")
-        plt.ylabel("p_bond")
-        plt.legend()
+        plt.title(f"Comparative heat map for {tesellation_type} tesellation", size=20)
+        plt.xlabel(r"$P_{occupancy}$", size=15)
+        plt.ylabel(r"$P_{spread}$", size=15)
+        plt.legend(loc='upper left', fontsize=13)
+        plt.tight_layout()
         plt.savefig(imagePath+'.png', format='png')
         #plt.show()
 
@@ -583,6 +543,7 @@ class forestFire():
         X, Y = np.meshgrid(heatmap_data.columns.astype(float), heatmap_data.index.astype(float))
         Z = heatmap_data.values
 
+        #------------------------------------------------------------------------------------------
         # Crear la figura y el gráfico 3D
         fig2 = plt.figure(figsize=(12, 8))
         ax2 = fig2.add_subplot(111, projection='3d')
@@ -762,3 +723,37 @@ def triangularNeighboursBooleanTensor(columns,rows):
     booleanTensor[2] = evenColumns
     booleanTensor[3] = oddColumns
     return booleanTensor
+
+
+
+
+@njit
+def propagate_step(forest, neighboursBoolTensor, pb):
+    height, width = forest.shape
+    new_forest = forest.copy()
+    probabilityMatrixForest = np.random.rand(height, width)
+
+    burningNeighbours = np.zeros((height, width), dtype=np.int32)
+
+    for i in range(height):
+        for j in range(width):
+            for k in range(8):
+                if neighboursBoolTensor[k, i, j] and forest[i, j] != 0:
+                    ni = i + (k // 3) - 1
+                    nj = j + (k % 3) - 1
+                    if 0 <= ni < height and 0 <= nj < width:
+                        if forest[ni, nj] == 2:
+                            burningNeighbours[i, j] += 1
+
+    hasNewBurning = False
+    for i in range(height):
+        for j in range(width):
+            if forest[i, j] == 1 and burningNeighbours[i, j] > 0:
+                prob = 1.0 - (1.0 - probabilityMatrixForest[i, j]) ** (1.0 / burningNeighbours[i, j])
+                if prob <= pb:
+                    new_forest[i, j] = 2
+                    hasNewBurning = True
+            elif forest[i, j] == 2:
+                new_forest[i, j] = 3
+
+    return new_forest, hasNewBurning
