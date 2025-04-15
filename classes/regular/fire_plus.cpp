@@ -210,8 +210,8 @@ std::tuple<py::list, int> propagate_fire_cpp(py::array_t<int> forest_np,
     
     py::list py_history;
     for (auto& state : history) {
-        std::cout<<state<<std::endl;
-        py_history.append(xt::pyarray<int>(state));
+        //std::cout<<state<<std::endl;
+        py_history.append(py::cast(state));
 
     }
 

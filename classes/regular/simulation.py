@@ -39,7 +39,7 @@ class forestFire():
         self.topography = topography
 
         self.forestSize = initialForest.shape
-        self.historicalFirePropagation = [np.copy(initialForest)]
+        self.historicalFirePropagation = []
         self.saveHistoricalPropagation = saveHistoricalPropagation
         
     
@@ -50,8 +50,7 @@ class forestFire():
         if np.sum(self.forest == 2) == 0:
             print('The forest does not have burning trees')
         else:
-            final_forest, steps = fire.propagate_fire_cpp(self.forest.astype(np.int32), pb, self.neighbours, self.neighboursBoolTensor.astype(np.int32), True)
-            self.forest = final_forest
+            self.historicalFirePropagation, steps = fire.propagate_fire_cpp(self.forest.astype(np.int32), pb, self.neighbours, self.neighboursBoolTensor.astype(np.int32), True)
             return steps
         
 

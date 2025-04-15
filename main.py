@@ -9,15 +9,15 @@ from scipy.spatial import Voronoi
 
 from scripts.routes import routes_dict, data_route
 import matplotlib.pyplot as plt
-
+import os
 
 import time
 
 if __name__ == '__main__':
     usrChoice = menu()
-    matrix = np.ones((10,10))
-    matrix[5,5] = 2
-  
+    matrix = np.ones((100,100))
+    matrix[50,50] = 2
+    os.environ["QT_QPA_PLATFORM"] = "xcb"
   
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  
     if usrChoice == 1:
@@ -31,18 +31,18 @@ if __name__ == '__main__':
             
             name = 'squaredAnimation_test'
             route = routes_dict['squared'] +  name
-            forest = simulation.squareForest(burningThreshold=0.95,occuProba=0.95 ,initialForest=matrix, saveHistoricalPropagation=True)
-            #forest.animate(route)    
-            start = time.time()
-            history, steps = forest.propagateFire(ps=1,pb=1)
-            print("Execution time:", time.time() - start)
-            print(steps)
+            forest = simulation.squareForest(burningThreshold=0.55,occuProba=0.95 ,initialForest=matrix, saveHistoricalPropagation=True)
+            forest.animate(route)    
+            #start = time.time()
+            #steps = forest.propagateFire(ps=1,pb=0.55)
+            #print("Execution time:", time.time() - start)
+            #print(steps)
             
         elif tessellation == 2:
             
             name = 'triangularAnimation'
             route = routes_dict['triangular'] + name
-            forest = simulation.triangularForest(burningThreshold=0.95,occuProba=0.95 ,initialForest=matrix, saveHistoricalPropagation=True)
+            forest = simulation.triangularForest(burningThreshold=0.7,occuProba=0.95 ,initialForest=matrix, saveHistoricalPropagation=True)
             forest.animate(route)
         
         
