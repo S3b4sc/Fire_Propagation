@@ -96,7 +96,7 @@ xt_int createNeighbourTensor(const xt_int& forest,
 // - neighboursBoolTensor_np: a 3D NumPy array (int) of shape (num_neigh, height, width)
 // - saveHistory: boolean flag; if true, history is recorded (here we do not return it, but you could extend this)
 // Returns: a pair containing the final forest (as a py::array) and the propagation time (int)
-std::tuple<py::list, int> propagate_fire_cpp(py::array_t<int> forest_np,
+std::tuple<py::list, int, py::array_t<int>> propagate_fire_cpp(py::array_t<int> forest_np,
                                              double pb,
                                              py::list py_neighbours,
                                              py::array_t<int> neighboursBoolTensor_np,
@@ -222,7 +222,7 @@ std::tuple<py::list, int> propagate_fire_cpp(py::array_t<int> forest_np,
     //py::array final_forest = py::cast(forest);
     
     
-    return std::make_pair(py_history, propagationTime);
+    return std::make_tuple(py_history, propagationTime, py::cast(forest));
 }
 
 //-------------------------------------------------------------------------
@@ -265,3 +265,5 @@ PYBIND11_MODULE(fire_plus, m) {
         return py::cast(tensor);
     }, "Create the neighbor tensor using vectorized xtensor operations");
 }
+
+// Compile: python setup.py build_ext --inplace

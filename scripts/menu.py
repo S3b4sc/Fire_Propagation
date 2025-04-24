@@ -10,7 +10,7 @@ def menu():
     1   Run fire on chosen tessellation and generate gif
     2   Calculate propagation time graph as a function of p
     3   Determine the percolation threshold P_c
-    4   Find the critical exponent (Out of service)
+    4   Find the critical exponent for infinite cluster
     5   Compare probability bond vs probability site
     '''
     

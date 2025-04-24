@@ -31,7 +31,7 @@ if __name__ == '__main__':
             
             name = 'squaredAnimation_test'
             route = routes_dict['squared'] +  name
-            forest = simulation.squareForest(burningThreshold=0.55,occuProba=0.95 ,initialForest=matrix, saveHistoricalPropagation=True)
+            forest = simulation.squareForest(burningThreshold=0.7,occuProba=1 ,initialForest=matrix, saveHistoricalPropagation=True)
             forest.animate(route)    
             #start = time.time()
             #steps = forest.propagateFire(ps=1,pb=0.55)
@@ -72,7 +72,7 @@ if __name__ == '__main__':
     
     elif usrChoice == 2:
         
-        n = 100    # Amount of values to consider for p
+        n = 30    # Amount of values to consider for p
         m = 20      # Amount of trials per p 
         
         try:
@@ -119,8 +119,8 @@ if __name__ == '__main__':
             print('That is not an option, try again.')
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     elif usrChoice == 3:
-        n = 35    # Amount of values to consider for p
-        m = 40      # Amount of trials per p        
+        n = 50    # Amount of values to consider for p
+        m = 20     # Amount of trials per p        
         n_iter = 3
         
         try:
@@ -134,7 +134,7 @@ if __name__ == '__main__':
             route = routes_dict['squared'] +  name
             forest = simulation.squareForest(burningThreshold=0.95,occuProba=0.95 ,initialForest=matrix, saveHistoricalPropagation=True)
             #p_c = forest.percolationThreshold(n,m,matrix,True,"site", fixed_value=1,saveRoute=route)
-            p_c = forest.estimate_percolation_threshold(m=m, matrix=matrix, n_iter=n_iter)
+            p_c = forest.estimate_percolation_threshold(m=m, matrix=matrix, n_iter=n_iter,fixed='site', fixed_value=1)
             
            
             print("The percolation threshold is: ",p_c)
@@ -145,7 +145,7 @@ if __name__ == '__main__':
             name = 'TriangularPercolationThreshold'
             route = routes_dict['triangular'] + name 
             forest = simulation.triangularForest(burningThreshold=0.55, occuProba=1 ,initialForest=matrix)
-            #p_c = forest.percolationThreshold(n,m,matrix,False,"site",fixed_value=1,saveRoute=route)
+            #p_c = forest.percolationThreshold(n,m,matrix,True,"site",fixed_value=1,saveRoute=route)
             p_c = forest.estimate_percolation_threshold(m=m, matrix=matrix, n_iter=n_iter)
             
             print("The percolation threshold is: ",p_c)
@@ -155,7 +155,8 @@ if __name__ == '__main__':
             name = 'hexagonalPercolationThreshold'
             route = routes_dict['hexagon'] + name
             forest = simulation.heaxgonalForest(burningThreshold=0.55, occuProba=1 ,initialForest=matrix)
-            p_c = forest.percolationThreshold(n,m,matrix,True,"site", saveRoute=route)
+            #p_c = forest.percolationThreshold(n,m,matrix,True,"site", saveRoute=route)
+            p_c = forest.estimate_percolation_threshold(m=m, matrix=matrix, n_iter=n_iter)
             print("The percolation threshold is: ",p_c)
         
         elif tessellation == 4:
@@ -168,17 +169,43 @@ if __name__ == '__main__':
 
     elif usrChoice == 4:
         n = 20      # Amount of values to consider for p in the range (0,1) to find p_c
-        m = 10      # Amount of trialas per each p to find p_c
+        m = 25      # Amount of trialas per each p to find p_c
         
-        n2 = 20      # Amount of values to consider for p 
-        m2 = 10     # 
-        saveRoute = './data/squared/'
+        n2 = 40      # Amount of values to consider for p 
+        m2 = 30     # 
+        
         epsilon = 0.002*6
         delta = 0.002
         
-        forest = simulation.squareForest(burningThreshold=0.55,occuProba=1. , initialForest=matrix)
-        criticalExponent = forest.criticalExponent(saveRoute,epsilon,delta,n,m,n2,m2,matrix)
-        print(criticalExponent)
+        try:
+            tessellation = int(input("Choose one: \n1   Squared\n2  Triangular\n3    Hexagonal\n4   Voronoi\n"))
+        except:
+            print('Not a valid option.')
+            
+        if tessellation == 1:
+            saveRoute = './data/squared/'
+            forest = simulation.squareForest(burningThreshold=0.55,occuProba=1. , initialForest=matrix)
+            
+        elif tessellation == 2:
+            saveRoute = './data/triangular/'
+            forest = simulation.triangularForest(burningThreshold=0.55,occuProba=1. , initialForest=matrix)
+            #criticalExponent = forest.criticalExponent(saveRoute,epsilon,delta,n,m,n2,m2,matrix)
+            criticalExponent = forest.P_inf_criticalExponent(save_route=saveRoute, intervalTol=1e-4,
+                                                       n=n,m=m, n2=n2,m2=m2,fixed='site',
+                                                       fixed_values=[1],initial=matrix,
+                                                       method='pivot')
+        elif tessellation == 3:
+            saveRoute = './data/hexagonal/'
+            forest = simulation.heaxgonalForest(burningThreshold=0.55,occuProba=1. , initialForest=matrix)
+            #criticalExponent = forest.criticalExponent(saveRoute,epsilon,delta,n,m,n2,m2,matrix)
+            criticalExponent = forest.P_inf_criticalExponent(save_route=saveRoute, intervalTol=1e-4,
+                                                       n=n,m=m, n2=n2,m2=m2,fixed='site',
+                                                       fixed_values=[1],initial=matrix,
+                                                       method='pivot')
+        
+        print(r'$P_inf$ critical exponent is: $\beta =$ {criticalExponent}')
+        #criticalExponent = forest.criticalExponent_cluster(saveRoute,1e-3,n,m,n2,m2,'site',[0.6,0.7,0.8],matrix,'pivot')
+        
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     elif usrChoice == 5:
