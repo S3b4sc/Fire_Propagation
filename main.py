@@ -1,5 +1,6 @@
 from classes.regular import simulation
 from classes.voronoi import voronoi_fire
+from scripts.utils import infinite_pc
 
 from classes.fit import fitting
 
@@ -17,7 +18,7 @@ if __name__ == '__main__':
     usrChoice = menu()
     matrix = np.ones((100,100))
     matrix[50,50] = 2
-    os.environ["QT_QPA_PLATFORM"] = "xcb"
+    #os.environ["QT_QPA_PLATFORM"] = "wayland"
   
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  
     if usrChoice == 1:
@@ -32,6 +33,7 @@ if __name__ == '__main__':
             name = 'squaredAnimation_test'
             route = routes_dict['squared'] +  name
             forest = simulation.squareForest(burningThreshold=0.7,occuProba=1 ,initialForest=matrix, saveHistoricalPropagation=True)
+            
             forest.animate(route)    
             #start = time.time()
             #steps = forest.propagateFire(ps=1,pb=0.55)
@@ -44,7 +46,7 @@ if __name__ == '__main__':
             route = routes_dict['triangular'] + name
             forest = simulation.triangularForest(burningThreshold=0.7,occuProba=0.95 ,initialForest=matrix, saveHistoricalPropagation=True)
             forest.animate(route)
-        
+         
         
         elif tessellation == 3:
             
@@ -62,7 +64,7 @@ if __name__ == '__main__':
             name = 'voronoiAnimation'
             route = routes_dict['voronoi'] + name
 
-            voronoi = voronoi_fire.voronoiFire(1.,0.5,vor,1,)
+            voronoi = voronoi_fire.voronoiFire(0.4,0.8,vor,1,)
             voronoi.animate(route)
             
         else:
@@ -185,6 +187,10 @@ if __name__ == '__main__':
         if tessellation == 1:
             saveRoute = './data/squared/'
             forest = simulation.squareForest(burningThreshold=0.55,occuProba=1. , initialForest=matrix)
+            criticalExponent = forest.P_inf_criticalExponent(save_route=saveRoute, intervalTol=1e-4,
+                                                       n=n,m=m, n2=n2,m2=m2,fixed='bond',
+                                                       fixed_values=[0.7],initial=matrix,
+                                                       method='pivot')
             
         elif tessellation == 2:
             saveRoute = './data/triangular/'
@@ -203,7 +209,8 @@ if __name__ == '__main__':
                                                        fixed_values=[1],initial=matrix,
                                                        method='pivot')
         
-        print(r'$P_inf$ critical exponent is: $\beta =$ {criticalExponent}')
+        print(rf'$P_{{inf}}$ critical exponent is: $\\beta = {criticalExponent}$')
+
         #criticalExponent = forest.criticalExponent_cluster(saveRoute,1e-3,n,m,n2,m2,'site',[0.6,0.7,0.8],matrix,'pivot')
         
 
@@ -330,41 +337,41 @@ if __name__ == '__main__':
             print('Not a valid option.')    
         
         if tessellation == 1:
-            matrix = np.ones((100,100))
-            matrix[50,50] = 2
+            matrix = np.ones((500,500))
+            matrix[250,250] = 2
             
             folder_path = data_route['squared']
             
             
             forest = simulation.squareForest(burningThreshold=0.95,occuProba=0.95 ,initialForest=matrix)
-            forest.criticalExponent(save_route=folder_path,
-                                    intervalTol=1e-4,
-                                    n=100,
-                                    m=15,
-                                    n2=100,
-                                    m2=15,
-                                    fixed='bond',
-                                    fixed_values=[0.65,0.75,0.85],
-                                    initial=matrix)
+            forest.gamma_exponent(save_route=folder_path,
+                                    n=20,
+                                    m=30,
+                                    n2=30,
+                                    m2=70,
+                                    fixed='site',
+                                    fixed_values=[0.7],
+                                    initial=matrix,
+                                    method='pivot')
             
             
         elif tessellation == 2:
-            matrix = np.ones((100,100))
-            matrix[50,50] = 2
+            matrix = np.ones((500,500))
+            matrix[250,250] = 2
             
             folder_path = data_route['triangular']
             
             
             forest = simulation.triangularForest(burningThreshold=0.95,occuProba=0.95 ,initialForest=matrix)
-            forest.criticalExponent(save_route=folder_path,
-                                    intervalTol=1e-4,
-                                    n=100,
-                                    m=15,
-                                    n2=100,
+            forest.gamma_exponent(save_route=folder_path,
+                                    n=20,
+                                    m=30,
+                                    n2=20,
                                     m2=15,
                                     fixed='bond',
-                                    fixed_values=[0.5,0.6,0.7],
-                                    initial=matrix)
+                                    fixed_values=[0.7],
+                                    initial=matrix,
+                                    method='pivot')
             
         elif tessellation == 3:
             matrix = np.ones((100,100))
@@ -404,4 +411,20 @@ if __name__ == '__main__':
             
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    
+    elif usrChoice == 9:
+        info = {
+        'burningThreshold': 0.7,
+        'occuProba': 1,
+        'saveHistoricalPropagation': False
+        }
+        
+        pc_info = {
+            'm': 20,
+            'fixed': 'site',
+            'n_iter': 3,
+        }
+
+        infinite_pc(l=[20,30,40,50,60,70,80,90,100,200,300], 
+                    save_route=routes_dict['squared'],
+                    fire_args=info,
+                    pc_args=pc_info)

@@ -164,10 +164,12 @@ class forestFire():
 
         n = len(probalities)
         pcs = np.zeros(n_iter)
+        
+        print('---------------------------------------')
+        print('For fixed ' + fixed + f' {fixed_value}')
         for i in range(n_iter):
             
-            print('---------------------------------------')
-            print('For fixed ' + fixed + f' {fixed_value}')
+            
             times = np.zeros(n)
 
             for p_index,p in enumerate(probalities):
@@ -220,7 +222,7 @@ class forestFire():
         - initial: Initial forest state.
         - method: "freq" or other method for pc estimation.
         '''
-
+        #p_c = np.array([0.52])
         # Step 1: Estimate pc for each fixed value
         p_c = np.zeros(len(fixed_values))
         for i, p in enumerate(fixed_values):
@@ -228,30 +230,38 @@ class forestFire():
             if method == 'freq':
                 p_c[i] = self.percolationThreshold(n=n, m=m, matrix=self.forest, plot=False, fixed=fixed, fixed_value=p)
             else:
-                p_c[i] = self.estimate_percolation_threshold(m=m, matrix=self.forest, n_iter=3, fixed=fixed, fixed_value=p)
-
+                p_c[i] = self.estimate_percolation_threshold(m=m, matrix=self.forest, n_iter=4, fixed=fixed, fixed_value=p)
         # Step 2: Run simulations for p > pc
         tabular_info = np.zeros((n2, len(fixed_values)))
         p_values = np.zeros((n2, len(fixed_values)))
 
         for j, fixed_value in enumerate(fixed_values):
             #P_plus = np.linspace(p_c[j], p_c[j] * (1 + intervalTol), n2)
-            P_plus = np.linspace(p_c[j] + 0.01, p_c[j] + 0.12 ,  n2)
+            P_plus = np.linspace(p_c[j] + 0.01, p_c[j] + 0.05 ,  n2)
             p_values[:, j] = P_plus - p_c[j]
             average_t_plus = np.zeros(n2)
 
             for i, p_plus in enumerate(P_plus):
                 t_plus = np.zeros(m2)
-                for k in range(m2):
+                k = 0
+                while k < m2:
                     self.forest = np.copy(initial)
                     if fixed == 'bond':
                         _ = self.propagateFire(ps=p_plus, pb=fixed_value)
                         # Compute the fraction of site for the giant cluster considering the occupation probability
-                        t_plus[k] = np.sum(self.forest == 3) / (self.forest.size*p_plus)
+                        # Only account for percolating clusters
+                        if percolation_check(self.forest):
+                            t_plus[k] = np.sum(self.forest == 3) / (self.forest.size*p_plus)
+                            k += 1
+                            
                     else:
                         _ = self.propagateFire(ps=fixed_value, pb=p_plus)
                         # Compute the fraction of site for the giant cluster considering the occupation probability
-                        t_plus[k] = np.sum(self.forest == 3) / (self.forest.size*fixed_value)
+                        # Only account for percolating clusters
+                        if percolation_check(self.forest):
+                            t_plus[k] = np.sum(self.forest == 3) / (self.forest.size*fixed_value)
+                            k += 1
+                        
                         
                 average_t_plus[i] = t_plus.mean()
 
@@ -294,9 +304,8 @@ class forestFire():
 
 
 
-    def criticalExponent_cluster(self,
+    def gamma_exponent(self,
                          save_route:str, 
-                         intervalTol:float, 
                          n:int,m:int,n2:int,m2:int,
                          fixed:str,fixed_values:list,
                          initial:np.ndarray,
@@ -321,71 +330,61 @@ class forestFire():
             else:
                 p_c[i] = self.estimate_percolation_threshold(m=m, matrix=self.forest, n_iter=3, fixed=fixed, fixed_value=p)
 
-        # Step 2: Run simulations for p > pc
+        # Step 2: Run simulations for p < pc
+        
+        
         chi = np.zeros((n2, len(fixed_values)))
         p_values = np.zeros((n2, len(fixed_values)))
-        chi_err = np.zeros((n2,len(fixed_values)))
+        
         
         
         
         for j, fixed_value in enumerate(fixed_values):
-            P_plus = np.linspace(p_c[j] - 0.06, p_c[j] - 0.01 ,  n2)
-            p_values[:, j] = P_plus - p_c[j]
-            average_t_plus = np.zeros(n2)
+            
+            P_minus = np.linspace(p_c[j] - 0.1, p_c[j] - 0.001 ,  n2)
+            p_values[:, j] = np.abs(P_minus - p_c[j])
         
-            for i, p_plus in enumerate(P_plus):
-                hist = np.zeros(m2)
-                for k in range(m2):
-                    self.forest = np.copy(initial)
+            for i, p_minus in enumerate(P_minus):
+                S = np.zeros(m2)   # Store cluster sizes
+                self.forest = np.copy(initial)
+                
+                k = 0
+                while k < m2:     
                     if fixed == 'bond':
-                        _ = self.propagateFire(ps=p_plus, pb=fixed_value)
-                        # Compute the burned sites
-                        burned = np.sum(self.forest == 3)
-                        hist[j] = burned
+                        _ = self.propagateFire(ps=p_minus, pb=fixed_value)
                     else:
-                        _ = self.propagateFire(ps=fixed_value, pb=p_plus)
-                        # Compute the burned sites
-                        burned = np.sum(self.forest == 3)
-                        hist[j] = burned
+                        _ = self.propagateFire(ps=fixed_value, pb=p_minus)
+
+                    # Compute the burned sites
+                    if not (percolation_check(self.forest)):    # Only count not infinite cluster sizes
+                        S[k] = np.sum(self.forest == 3)
+                        k += 1
                         
-                # Susceptibilidad ≈ varianza / N (asumiendo sistema finito)
-                chi[i] = np.var(hist) / (initial.size)
-                #chi[i] = np.mean(hist)
-                chi_err[i] = np.std(hist) / (np.sqrt(m2) * initial.size)  # Error estándar de la varianza
-
-        for i in range(n2):
-            hist = np.zeros(m2)
-            for j in range(m2):
-                self.forest = initial.copy()
-                _ = self.propagateFire(ps=1, pb=pp[i])
-                burned = np.sum(self.forest == 3)
-                hist[j] = burned
-
-            # Susceptibilidad ≈ varianza / N (asumiendo sistema finito)
-            chi[i] = np.var(hist) / (initial.size)
-            #chi[i] = np.mean(hist)
-            chi_err[i] = np.std(hist) / (np.sqrt(m_reps) * initial.size)  # Error estándar de la varianza
-
+                chi[i,j] = np.mean(S**2) #/ np.mean(S)       # Suceptibility
+               
+        
         # --- Ajuste lineal log-log ---
-        log_p = np.log(np.abs(pp - Pc))
+        log_p = np.log(p_values)
         log_chi = np.log(chi)
+        gamma = np.zeros(len(fixed_values))
 
-        # Filtramos puntos válidos (sin log(0) ni chi <= 0)
-        valid = (chi > 0)
-        log_p = log_p[valid]
-        log_chi = log_chi[valid]
-        chi_err_plot = chi_err[valid]
+        
+        # Step 4: Plot
+        plt.figure(figsize=(8, 6))
+        for i in range(len(fixed_values)):
+            
+            slope, intercept, *_ = linregress(log_p[:,i], log_chi[:,i])
+            #result = linregress(log_p, log_chi)
+            gamma[i] = -slope
+        
+            # Plotting
+            plt.plot(log_p, log_chi, 'o', label=f'{fixed} = {fixed_values[i]:.2f}')
+            plt.plot(log_p, slope * log_p + intercept,'--', label=f'Ajuste: γ ≈ {gamma[i]:.2f}')
+            #plt.errorbar(log_p, log_chi, yerr=chi_err, fmt='o', label='Datos simulados', capsize=4)
+        
+        
+        #print(f"Coeficiente de correlación R = {r_value:.4f}")        
 
-        slope, intercept, r_value, _, _ = linregress(log_p, log_chi)
-        gamma = -slope
-
-        print(f"Exponente crítico gamma estimado: {gamma:.4f}")
-        print(f"Coeficiente de correlación R = {r_value:.4f}")
-
-        # --- Gráfica ---
-        plt.figure(figsize=(7, 5))
-        plt.errorbar(log_p, log_chi, yerr=chi_err_plot/chi[valid], fmt='o', label='Datos simulados', capsize=4)
-        plt.plot(log_p, intercept + slope * log_p, '-', label=f'Ajuste: γ ≈ {gamma:.2f}')
         plt.xlabel(r'$\log(|p - p_c|)$')
         plt.ylabel(r'$\log(\chi)$')
         plt.title('Estimación del exponente crítico γ')
@@ -395,66 +394,10 @@ class forestFire():
         plt.grid(True)
         plt.legend()
         plt.tight_layout()
-        plt.savefig('./susceptibility_fit.png')
-        plt.show()
+        plt.savefig(save_route + 'gamma_exponent_fit.png', dpi=300)
+        #plt.show()
     
-        
-        
-        
-        
-        
-        
-        
 
-        for j, fixed_value in enumerate(fixed_values):
-            #P_plus = np.linspace(p_c[j], p_c[j] * (1 + intervalTol), n2)
-            P_plus = np.linspace(p_c[j] + 0.01, p_c[j] + 0.12 ,  n2)
-            p_values[:, j] = P_plus - p_c[j]
-            average_t_plus = np.zeros(n2)
-
-            for i, p_plus in enumerate(P_plus):
-                t_plus = np.zeros(m2)
-                for k in range(m2):
-                    self.forest = np.copy(initial)
-                    if fixed == 'bond':
-                        _ = self.propagateFire(ps=p_plus, pb=fixed_value)
-                        # Compute the fraction of site for the giant cluster considering the occupation probability
-                        t_plus[k] = np.sum(self.forest == 3) / (self.forest.size*p_plus)
-                    else:
-                        _ = self.propagateFire(ps=fixed_value, pb=p_plus)
-                        # Compute the fraction of site for the giant cluster considering the occupation probability
-                        t_plus[k] = np.sum(self.forest == 3) / (self.forest.size*fixed_value)
-                        
-                average_t_plus[i] = t_plus.mean()
-
-            tabular_info[:, j] = average_t_plus
-        
-        # Step 3: Log-log transformation
-        log_t_data = np.log(tabular_info)
-        log_p_values = np.log(p_values)
-        critical_exponents = np.zeros(len(fixed_values))
-
-        # Step 4: Plot
-        plt.figure(figsize=(8, 6))
-        for i in range(len(fixed_values)):
-            slope, intercept, *_ = linregress(log_p_values[:, i], log_t_data[:, i])
-            critical_exponents[i] = slope
-
-            # Plotting
-            plt.plot(log_p_values[:, i], log_t_data[:, i], 'o', label=f'{fixed} = {fixed_values[i]:.2f}')
-            plt.plot(log_p_values[:, i],
-                     slope * log_p_values[:, i] + intercept,
-                     '--', label=f'fit: β = {slope:.3f}')
-
-        plt.xlabel(r'$\log(p - p_c)$')
-        plt.ylabel(r'$\log(p_\infty)$')
-        plt.title(r'Log-Log Fit to Estimate $\beta$ (Above $p_c$)')
-        plt.legend()
-        plt.grid(True)
-        plt.tight_layout()
-        plt.savefig(save_route + 'beta_exponent_fit.png', dpi=300)
-        plt.close()
-        
         
         
             
