@@ -10,7 +10,7 @@ import scipy.optimize as opt
 import scipy.stats as stats
 
 from classes.regular.auxiliarfunc import percolation_check, Apply_occupation_proba, log_criteria_niter
-from classes.fit.fitting import expFit
+from classes.fit.fitting import expFit, gaussian
 
 import classes.regular.fire_plus as fire
 
@@ -128,7 +128,7 @@ class forestFire():
         #print(percolation_frequencies > 0.5)
         
         # Get the percolation threshold
-        p_c = 0.5 #np.round(P[percolation_frequencies > 0.5][0],2)
+        p_c = np.round(P[percolation_frequencies >= 0.5][0],2)
 
         if plot:
             # Plot
@@ -195,6 +195,88 @@ class forestFire():
         print(Pc)
 
         return Pc
+    
+    def fit_percolation_threshold(self,n:int,m:int, 
+                             matrix:np.ndarray, 
+                             plot:bool=False, 
+                             fixed:str = 'bond', 
+                             fixed_value:float=1,
+                             saveRoute:str='./',
+                             exploring_range:list=[0,1],
+                             width:float = 0.05):
+        """
+        """
+        results = np.zeros((n,m))
+        P = np.linspace(exploring_range[0],exploring_range[1],n)
+    
+        for i,p in enumerate(P):
+            
+            for j in range(m):
+                
+                self.forest = np.copy(matrix)
+                # If fixed is bond we compute the p site critical value
+                
+                if fixed == 'bond':
+                    t = self.propagateFire(p, fixed_value)
+                # If not, we calculate the p bond critical value
+                else:
+                    t = self.propagateFire(fixed_value,p)
+
+                results[i,j] = t
+                
+        # Delta of p
+        delta = np.round((exploring_range[1] - exploring_range[0])/n,2)
+        
+        # Calculate the variance of time propagation for each p
+        p_variance = results.var(axis=1)
+        
+        # Get the p with the higher variance
+        fit_pivot = P[ np.argmax(p_variance) ]
+
+        # Run simulations arount the pivot (10 points in the interval)
+        fit_data_raw = np.zeros((15,m))
+        fit_P = np.linspace(fit_pivot - width, fit_pivot + width, 15)
+
+        for i,p in enumerate(fit_P):
+            for j in range(m):
+                self.forest = np.copy(matrix)
+                # If fixed is bond we compute the p site critical value
+                if fixed == 'bond':
+                    t = self.propagateFire(p, fixed_value)
+                # If not, we calculate the p bond critical value
+                else:
+                    t = self.propagateFire(fixed_value,p)
+
+                fit_data_raw[i,j] = t
+
+        fit_data = fit_data_raw.mean(axis=1)
+
+
+        
+        # Perform Gaussian fit to variance data
+        popt, pcov = opt.curve_fit(gaussian, fit_P, fit_data, p0=[0.1, fit_P[np.argmax(fit_data)], 0.01])
+
+        # Extract fitted parameters
+        A_fit, pc_estimate, sigma_fit = popt
+
+        if plot:
+            plt.figure(figsize=(8, 5))
+            plt.plot(fit_P, fit_data, 'o', label="Simulated Data", color="blue")
+            p_smooth = np.linspace(fit_P[0], fit_P[-1], 200)
+            plt.plot(p_smooth, gaussian(p_smooth, *popt), '-', label="Gaussian fit", color="red")
+            plt.axvline(pc_estimate, color='green', linestyle='--', label=f"Estimated $p_c$ = {pc_estimate:.5f}")
+            plt.xlabel("Probability")
+            plt.ylabel("Mean propagation time")
+            plt.title("Gaussian Fit to Estimate $p_c$")
+            plt.legend()
+            plt.grid(True)
+            plt.savefig(saveRoute + 'pc_fit.png')
+
+        print('---------------------------------------------------')
+        print('estimated pc:', pc_estimate)
+        print('max time prop:', fit_P[ np.argmax(fit_data)] )
+        return pc_estimate
+
 
         
     #-------------------------------------------------------------------------------------------------
@@ -222,15 +304,15 @@ class forestFire():
         - initial: Initial forest state.
         - method: "freq" or other method for pc estimation.
         '''
-        #p_c = np.array([0.52])
+        p_c = np.array([0.506])
         # Step 1: Estimate pc for each fixed value
-        p_c = np.zeros(len(fixed_values))
-        for i, p in enumerate(fixed_values):
-            self.forest = np.copy(initial)
-            if method == 'freq':
-                p_c[i] = self.percolationThreshold(n=n, m=m, matrix=self.forest, plot=False, fixed=fixed, fixed_value=p)
-            else:
-                p_c[i] = self.estimate_percolation_threshold(m=m, matrix=self.forest, n_iter=4, fixed=fixed, fixed_value=p)
+        #p_c = np.zeros(len(fixed_values))
+        #for i, p in enumerate(fixed_values):
+        #    self.forest = np.copy(initial)
+        #    if method == 'freq':
+        #        p_c[i] = self.percolationThreshold(n=n, m=m, matrix=self.forest, plot=False, fixed=fixed, fixed_value=p)
+        #    else:
+        #        p_c[i] = self.estimate_percolation_threshold(m=m, matrix=self.forest, n_iter=4, fixed=fixed, fixed_value=p)
         # Step 2: Run simulations for p > pc
         tabular_info = np.zeros((n2, len(fixed_values)))
         p_values = np.zeros((n2, len(fixed_values)))

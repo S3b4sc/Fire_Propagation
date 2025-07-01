@@ -10,14 +10,15 @@
 #include <iostream>
 
 // xtensor headers:
-#include <xtensor/xarray.hpp>
-#include <xtensor/xadapt.hpp>
-#include <xtensor/xrandom.hpp>
-#include <xtensor/xmath.hpp>
-#include <xtensor/xview.hpp>
-#include <xtensor/xbuilder.hpp>
-#include <xtensor/xstrided_view.hpp>
-#include <xtensor/xio.hpp>
+#include <xtensor/containers/xarray.hpp>
+//#include <xtensor/xarray.hpp>
+#include <xtensor/containers/xadapt.hpp>
+#include <xtensor/generators/xrandom.hpp>
+#include <xtensor/core/xmath.hpp>
+#include <xtensor/views/xview.hpp>
+#include <xtensor/generators/xbuilder.hpp>
+#include <xtensor/views/xstrided_view.hpp>
+#include <xtensor/io/xio.hpp>
 #include <xtensor-python/pytensor.hpp>
 
 namespace py = pybind11;

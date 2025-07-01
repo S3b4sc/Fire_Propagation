@@ -22,6 +22,8 @@ def expFit(data, propTimeThreshold:int):
     return function,ps,pb,popt
     
     
+def gaussian(p, A, mu, sigma):
+    return A * np.exp(-((p - mu)**2) / (2 * sigma**2))
 
 
 

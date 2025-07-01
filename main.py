@@ -122,7 +122,7 @@ if __name__ == '__main__':
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     elif usrChoice == 3:
         n = 50    # Amount of values to consider for p
-        m = 20     # Amount of trials per p        
+        m = 50     # Amount of trials per p        
         n_iter = 3
         
         try:
@@ -136,10 +136,11 @@ if __name__ == '__main__':
             route = routes_dict['squared'] +  name
             forest = simulation.squareForest(burningThreshold=0.95,occuProba=0.95 ,initialForest=matrix, saveHistoricalPropagation=True)
             #p_c = forest.percolationThreshold(n,m,matrix,True,"site", fixed_value=1,saveRoute=route)
-            p_c = forest.estimate_percolation_threshold(m=m, matrix=matrix, n_iter=n_iter,fixed='site', fixed_value=1)
             
+            #p_c = forest.estimate_percolation_threshold(m=m, matrix=matrix, n_iter=n_iter,fixed='site', fixed_value=1)
+            p_c = forest.fit_percolation_threshold(n,m,matrix,True,'site',exploring_range=[0.4,0.6])
            
-            print("The percolation threshold is: ",p_c)
+            #print("The percolation threshold is: ",p_c)
             
             
         elif tessellation == 2:
@@ -148,7 +149,7 @@ if __name__ == '__main__':
             route = routes_dict['triangular'] + name 
             forest = simulation.triangularForest(burningThreshold=0.55, occuProba=1 ,initialForest=matrix)
             #p_c = forest.percolationThreshold(n,m,matrix,True,"site",fixed_value=1,saveRoute=route)
-            p_c = forest.estimate_percolation_threshold(m=m, matrix=matrix, n_iter=n_iter)
+            p_c = forest.estimate_percolation_threshold(m=m, matrix=matrix, n_iter=n_iter,fixed='site', fixed_value=1)
             
             print("The percolation threshold is: ",p_c)
             
@@ -158,11 +159,16 @@ if __name__ == '__main__':
             route = routes_dict['hexagon'] + name
             forest = simulation.heaxgonalForest(burningThreshold=0.55, occuProba=1 ,initialForest=matrix)
             #p_c = forest.percolationThreshold(n,m,matrix,True,"site", saveRoute=route)
-            p_c = forest.estimate_percolation_threshold(m=m, matrix=matrix, n_iter=n_iter)
+            p_c = forest.estimate_percolation_threshold(m=m, matrix=matrix, n_iter=n_iter,fixed='site', fixed_value=1)
             print("The percolation threshold is: ",p_c)
         
         elif tessellation == 4:
-            print('Not implemented just yet')
+            name = 'voronoiPercolationThreshold'
+            route = routes_dict['voronoi'] + name
+            forest = simulation.heaxgonalForest(burningThreshold=0.55, occuProba=1 ,initialForest=matrix)
+            #p_c = forest.percolationThreshold(n,m,matrix,True,"site", saveRoute=route)
+            p_c = forest.estimate_percolation_threshold(m=m, matrix=matrix, n_iter=n_iter,fixed='site', fixed_value=1)
+            print("The percolation threshold is: ",p_c)
         
         else:
             print('That is not an option, try again.')
@@ -188,8 +194,8 @@ if __name__ == '__main__':
             saveRoute = './data/squared/'
             forest = simulation.squareForest(burningThreshold=0.55,occuProba=1. , initialForest=matrix)
             criticalExponent = forest.P_inf_criticalExponent(save_route=saveRoute, intervalTol=1e-4,
-                                                       n=n,m=m, n2=n2,m2=m2,fixed='bond',
-                                                       fixed_values=[0.7],initial=matrix,
+                                                       n=n,m=m, n2=n2,m2=m2,fixed='site',
+                                                       fixed_values=[1],initial=matrix,
                                                        method='pivot')
             
         elif tessellation == 2:
@@ -349,7 +355,7 @@ if __name__ == '__main__':
                                     m=30,
                                     n2=30,
                                     m2=70,
-                                    fixed='site',
+                                    fixed='bond',
                                     fixed_values=[0.7],
                                     initial=matrix,
                                     method='pivot')
@@ -413,18 +419,24 @@ if __name__ == '__main__':
 
     elif usrChoice == 9:
         info = {
-        'burningThreshold': 0.7,
+        'burningThreshold': 1,
         'occuProba': 1,
         'saveHistoricalPropagation': False
         }
         
         pc_info = {
-            'm': 20,
+            'm': 150,
             'fixed': 'site',
-            'n_iter': 3,
+            'n_iter': 4,
+        }
+        pc_fit_args = {
+            'n':50,
+            'm':40,
+            'fixed':'site',
+            'exploring_range':[0.4,0.6]
         }
 
-        infinite_pc(l=[20,30,40,50,60,70,80,90,100,200,300], 
+        infinite_pc(l=[50,60,70,100,125,150,170,200,250,300,350,400,450,500], 
                     save_route=routes_dict['squared'],
                     fire_args=info,
-                    pc_args=pc_info)
+                    pc_args=pc_fit_args)
