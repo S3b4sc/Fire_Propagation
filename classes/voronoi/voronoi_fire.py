@@ -16,7 +16,7 @@ import os
 import joblib
 from scipy.stats import linregress
 
-from classes.fit.fitting import expFit
+from classes.fit.fitting import expFit, fit_best_model, model_dict
 from scipy.ndimage import label
 
 
@@ -78,10 +78,25 @@ class voronoiFire():
         self.top_border = np.array(self.top_border)
         self.bottom_border = np.array(self.bottom_border)
 
-    def propagateFire(self, ps:float, pb:float):
+    def propagateFire(self, ps:float, pb:float, percolates_check:bool=False, centered:bool = False):
         
         self.status = applyOcupation(self.status,ps)
-        self.status[self.initialFire] = 2
+
+        if centered:
+            # We find the closet point to the center of the grid
+            center = np.array([0.5, 0.5])
+
+            # Calculamos la distancia euclidiana al centro para cada punto
+            distances = np.linalg.norm(self.voronoi.points - center, axis=1)
+
+            # Obtenemos el índice del punto más cercano
+            closest_point = np.argmin(distances)
+            #print(closest_point)
+            self.status[closest_point] = 2    
+        else: 
+            self.status[self.initialFire] = 2
+
+
         # Guardar índices de borde
         border_indices = np.where(self.status == 0)[0]
         
@@ -125,24 +140,26 @@ class voronoiFire():
 
                 thereIsFire = False if np.sum(newBurningTrees) == 0 else True
                 
+                if percolates_check:
+                    # ---------------------
+                    # Detectar percolación entre lados opuestos
+                    # ---------------------
+                    burned_indices = np.where(self.status == 3)[0]
+
+                    left_burned = np.intersect1d(self.left_border, burned_indices)
+                    right_burned = np.intersect1d(self.right_border, burned_indices)
+                    top_burned = np.intersect1d(self.top_border, burned_indices)
+                    bottom_burned = np.intersect1d(self.bottom_border, burned_indices)
+
+                    percolates_horizontal = (len(left_burned) > 0) and (len(right_burned) > 0)
+                    percolates_vertical = (len(top_burned) > 0) and (len(bottom_burned) > 0)
+
+                    # El incendio percola si atraviesa completamente en alguna dirección
+                    percolates = percolates_horizontal or percolates_vertical
+
+                    return propagationTime, percolates
                 
-                # ---------------------
-                # Detectar percolación entre lados opuestos
-                # ---------------------
-                burned_indices = np.where(self.status == 3)[0]
-
-                left_burned = np.intersect1d(self.left_border, burned_indices)
-                right_burned = np.intersect1d(self.right_border, burned_indices)
-                top_burned = np.intersect1d(self.top_border, burned_indices)
-                bottom_burned = np.intersect1d(self.bottom_border, burned_indices)
-
-                percolates_horizontal = (len(left_burned) > 0) and (len(right_burned) > 0)
-                percolates_vertical = (len(top_burned) > 0) and (len(bottom_burned) > 0)
-
-                # El incendio percola si atraviesa completamente en alguna dirección
-                percolates = percolates_horizontal or percolates_vertical
-                
-            return propagationTime, percolates
+            return propagationTime
     
     
     #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++          Add commentMore actions
@@ -192,10 +209,10 @@ class voronoiFire():
         self.saveHistoricalPropagation = True
         print('Starting simulation, wait a sec...')
         # Simulate fire
-        _, percolates= self.propagateFire(self.occuProba, self.burningThreshold)
+        self.propagateFire(self.occuProba, self.burningThreshold)   #,centered = True
 
         print('Simulation has finished. Initializing animation...')
-        print(percolates)
+        #print(percolates)
         generateAnimation(self.voronoi,
                           filename,
                           self.historicalFirePropagation,
@@ -222,6 +239,93 @@ class voronoiFire():
             # if perimeter is higher than max_length, asign status 0
             if perimeter > max_length:
                 self.status[i] = 0
+
+
+    def fit_percolation_threshold(self,n:int,m:int, 
+                             plot:bool=False, 
+                             fixed:str = 'bond', 
+                             fixed_value:float=1,
+                             saveRoute:str='./',
+                             exploring_range:list=[0,1],
+                             width:float = 0.05):
+        """
+        """
+        results = np.zeros((n,m))
+        P = np.linspace(exploring_range[0],exploring_range[1],n)
+        fixed_status = np.ones(self.numPoints)
+
+        for i,p in enumerate(P):
+            for j in range(m):
+                
+                self.status = np.copy(fixed_status)
+                # If fixed is bond we compute the p site critical value
+                
+                if fixed == 'bond':
+                    t = self.propagateFire(ps=p, pb=fixed_value, centered=True)
+                # If not, we calculate the p bond critical value
+                else:
+                    t = self.propagateFire(ps=fixed_value,pb=p, centered=True)
+
+                results[i,j] = t
+                
+        # Delta of p
+        delta = np.round((exploring_range[1] - exploring_range[0])/n,2)
+        
+        # Calculate the variance of time propagation for each p
+        p_variance = results.var(axis=1)
+        
+        # Get the p with the higher variance
+        fit_pivot = P[ np.argmax(p_variance) ]
+
+        # Run simulations arount the pivot (10 points in the interval)
+        fit_data_raw = np.zeros((20,2*m))
+        fit_P = np.linspace(fit_pivot - width, fit_pivot + width, 20)
+
+        for i,p in enumerate(fit_P):
+            for j in range(2*m):
+
+                self.status = np.copy(fixed_status)
+                # If fixed is bond we compute the p site critical value
+                if fixed == 'bond':
+                    t = self.propagateFire(ps=p, pb=fixed_value)
+                # If not, we calculate the p bond critical value
+                else:
+                    t = self.propagateFire(ps=fixed_value,pb=p)
+
+                fit_data_raw[i,j] = t
+
+        fit_data = fit_data_raw.mean(axis=1)
+        fit_data_var = fit_data_raw.var(axis=1)
+        
+        # Perform fit to variance data
+        pc_estimate, model_name, model_params, pc_error = fit_best_model(fit_P, fit_data)
+
+        if plot:
+            plt.figure(figsize=(8, 5))
+            plt.plot(fit_P, fit_data, 'o', label="Simulated Data", color="blue")
+            
+            # Curva suave del modelo elegido
+            p_smooth = np.linspace(fit_P[0], fit_P[-1], 200)
+            model_func = model_dict[model_name][0]
+            y_smooth = model_func(p_smooth, *model_params)
+
+            plt.plot(p_smooth, y_smooth, '-', label=f"{model_name.capitalize()} fit", color="red")
+            plt.axvline(pc_estimate, color='green', linestyle='--', label=f"Estimated $p_c$ = {pc_estimate:.5f}")
+            plt.xlabel("Probability")
+            plt.ylabel("Mean propagation time")
+            plt.title(f"{model_name.capitalize()} Fit to Estimate $p_c$")
+            plt.legend()
+            plt.grid(True)
+            plt.savefig(saveRoute + 'pc_fit_' + f'{self.numPoints}' + '.png')
+
+        
+        print('---------------------------------------------------')
+        print('estimated pc:', pc_estimate)
+        print('max time prop:', fit_P[ np.argmax(fit_data)] )
+        print('max var:', fit_P[ np.argmax(fit_data_var)] )
+
+        #pc_error = np.abs(pc_estimate - fit_P[ np.argmax(fit_data)])
+        return pc_estimate, pc_error
                 
     def compareBondSite(self,resolution:int,
                         n_iter:int, imagePath,

@@ -10,7 +10,7 @@ import scipy.optimize as opt
 import scipy.stats as stats
 
 from classes.regular.auxiliarfunc import percolation_check, Apply_occupation_proba, log_criteria_niter
-from classes.fit.fitting import expFit, gaussian
+from classes.fit.fitting import expFit, fit_best_model, model_dict
 
 import classes.regular.fire_plus as fire
 
@@ -234,11 +234,11 @@ class forestFire():
         fit_pivot = P[ np.argmax(p_variance) ]
 
         # Run simulations arount the pivot (10 points in the interval)
-        fit_data_raw = np.zeros((15,m))
-        fit_P = np.linspace(fit_pivot - width, fit_pivot + width, 15)
+        fit_data_raw = np.zeros((20,2*m))
+        fit_P = np.linspace(fit_pivot - width, fit_pivot + width, 20)
 
         for i,p in enumerate(fit_P):
-            for j in range(m):
+            for j in range(2*m):
                 self.forest = np.copy(matrix)
                 # If fixed is bond we compute the p site critical value
                 if fixed == 'bond':
@@ -250,32 +250,37 @@ class forestFire():
                 fit_data_raw[i,j] = t
 
         fit_data = fit_data_raw.mean(axis=1)
-
-
+        fit_data_var = fit_data_raw.var(axis=1)
         
-        # Perform Gaussian fit to variance data
-        popt, pcov = opt.curve_fit(gaussian, fit_P, fit_data, p0=[0.1, fit_P[np.argmax(fit_data)], 0.01])
-
-        # Extract fitted parameters
-        A_fit, pc_estimate, sigma_fit = popt
+        # Perform fit to variance data
+        pc_estimate, model_name, model_params, pc_error = fit_best_model(fit_P, fit_data)
 
         if plot:
             plt.figure(figsize=(8, 5))
             plt.plot(fit_P, fit_data, 'o', label="Simulated Data", color="blue")
+            
+            # Curva suave del modelo elegido
             p_smooth = np.linspace(fit_P[0], fit_P[-1], 200)
-            plt.plot(p_smooth, gaussian(p_smooth, *popt), '-', label="Gaussian fit", color="red")
+            model_func = model_dict[model_name][0]
+            y_smooth = model_func(p_smooth, *model_params)
+
+            plt.plot(p_smooth, y_smooth, '-', label=f"{model_name.capitalize()} fit", color="red")
             plt.axvline(pc_estimate, color='green', linestyle='--', label=f"Estimated $p_c$ = {pc_estimate:.5f}")
             plt.xlabel("Probability")
             plt.ylabel("Mean propagation time")
-            plt.title("Gaussian Fit to Estimate $p_c$")
+            plt.title(f"{model_name.capitalize()} Fit to Estimate $p_c$")
             plt.legend()
             plt.grid(True)
-            plt.savefig(saveRoute + 'pc_fit.png')
+            plt.savefig(saveRoute + 'pc_fit_' + f'{matrix.shape[0]}' + '.png')
 
+        
         print('---------------------------------------------------')
         print('estimated pc:', pc_estimate)
         print('max time prop:', fit_P[ np.argmax(fit_data)] )
-        return pc_estimate
+        print('max var:', fit_P[ np.argmax(fit_data_var)] )
+
+        #pc_error = np.abs(pc_estimate - fit_P[ np.argmax(fit_data)])
+        return pc_estimate, pc_error
 
 
         
@@ -481,9 +486,6 @@ class forestFire():
     
 
         
-        
-            
-        
     def compareBondSite(self,resolution:int, imagePath,
                         folder_path, file_name, matrix,
                         tesellation_type:str,
@@ -657,7 +659,7 @@ class heaxgonalForest(forestFire):
         
         rows,columns = initialForest.shape
         neighboursBoolTensor = hexagonalNeighboursBooleanTensor(columns,rows)
-        neighbours = [(0,1),(0,-1),(-1,0),(1,0),(-1,1),(-1,1),(-1,-1),(-1,-1)]
+        neighbours = [(0,1),(0,-1),(-1,0),(1,0),(-1,1),(-1,-1)]
         super().__init__(burningThreshold, occuProba,initialForest, neighbours, neighboursBoolTensor, wind, topography, saveHistoricalPropagation)
     
     def animate(self, fileName, interval=100):
