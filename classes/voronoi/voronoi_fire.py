@@ -328,13 +328,15 @@ class voronoiFire():
         return pc_estimate, pc_error
                 
     def compareBondSite(self,resolution:int,
-                        n_iter:int, imagePath,
-                        folder_path, file_name,
-                        propTimeThreshold:int=120):
+                        imagePath:str,
+                        folder_path:str, file_name:str,
+                        propTimeThreshold:int=120, fit:bool = False):
+        
         # Verificar si la carpeta existe, si no, crearla
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
+        print(type(file_name))
         file_path = os.path.join(folder_path, file_name)
 
         # Verificar si el archivo .csv existe
@@ -383,7 +385,7 @@ class voronoiFire():
         print("Generando mapa de calor...")
         heatmap_data = data.pivot_table(index='P_site', columns='P_bond', values='time')
         plt.figure(figsize=(10, 8))
-        ax = sns.heatmap(heatmap_data, cmap='viridis', cbar_kws={'label': 'Valor de tiempo'})
+        ax = sns.heatmap(heatmap_data, cmap='viridis', cbar_kws={'label': '\nTime (a.u)'})
 
         # Configurar ticks manualmente
         ticks = np.arange(0, 1.1, 0.1)  # De 0 a 1 en pasos de 0.1
@@ -394,21 +396,52 @@ class voronoiFire():
         ax.invert_yaxis()
         ax.set_aspect(1)
 
-        plt.title("Mapa de calor de los datos (p_site, p_bond, time)")
-        plt.xlabel("p_site")
-        plt.ylabel("p_bond")
+        plt.title(f"Comparative heat map for voronoi tesellation", size=20)
+        plt.xlabel(r"$P_{occupancy}$", size=15)
+        plt.ylabel(r"$P_{spread}$", size=15)
 
+        if fit:
 
-        # Execute the fit
-        function,ps,pb,popt = expFit(data,propTimeThreshold)
-        # Plot results
-        x = np.linspace(0,1,100)
-        x_indices = x * (heatmap_data.shape[1] - 1)  # Scale x values to heatmap indices
-        y_indices = function(x,*popt) * (heatmap_data.shape[0] - 1)  # Scale y values to heatmap indices
+            # Execute the fit
+            function,ps,pb,popt = expFit(data,propTimeThreshold)
+            # Plot results
+            x = np.linspace(0,1,100)
+            x_indices = x * (heatmap_data.shape[1] - 1)  # Scale x values to heatmap indices
+            y_indices = function(x,*popt) * (heatmap_data.shape[0] - 1)  # Scale y values to heatmap indices
 
-        ax.plot(x_indices, y_indices,'r-',label='fit: %5.3f exp( - %5.3f p_site) + %5.3f' % tuple(popt), zorder=10)
+            ax.plot(x_indices, y_indices,'r-',label='fit: %5.3f exp( - %5.3f p_site) + %5.3f' % tuple(popt), zorder=10)
         plt.legend()
         plt.savefig(imagePath+'.png', format='png')
+
+
+        # Crear las mallas para las coordenadas X, Y, y los valores Z
+        X, Y = np.meshgrid(heatmap_data.columns.astype(float), heatmap_data.index.astype(float))
+        Z = heatmap_data.values
+
+        #------------------------------------------------------------------------------------------
+        # Crear la figura y el gráfico 3D
+        fig2 = plt.figure(figsize=(12, 8))
+        ax2 = fig2.add_subplot(111, projection='3d')
+
+        # Crear el gráfico de superficie
+        surface = ax2.plot_surface(X, Y, Z, cmap='viridis', edgecolor='k')
+
+        # Añadir barra de color
+        cbar = fig2.colorbar(surface, ax=ax, shrink=0.5, aspect=10)
+        cbar.set_label('Valor de tiempo')
+
+        # Etiquetas y título
+        ax2.set_title("Gráfico 3D de los datos (P_site, P_bond, time)")
+        ax2.set_xlabel("P_bond")
+        ax2.set_ylabel("P_site")
+        ax2.set_zlabel("time")
+
+        # Rotar para una mejor vista inicial
+        ax2.view_init(elev=30, azim=-30)
+        
+        
+        # Guardar la imagen
+        plt.savefig(imagePath + '_3D' +'.png', format='png')
         
     def percolationThreshold(self,n:int,m:int,  
                              plot:bool=False, 

@@ -3,14 +3,17 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.optimize import curve_fit
 from scipy.spatial import Voronoi
+import joblib
 
 from classes.regular import simulation
 from classes.voronoi import voronoi_fire
 from scripts.routes import data_route
+from classes.fit.fitting import gaussian
 
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 
+# Function to estimate the infinite system pc
 
 def infinite_pc(l: List[int], save_route:str, fire_args: Dict[str,Any], pc_args: Dict[str,Any],tessellation:str) -> None:
     """
@@ -133,8 +136,6 @@ def infinite_pc(l: List[int], save_route:str, fire_args: Dict[str,Any], pc_args:
         print('fit not converged.')
     
     
-
-
 # Define scaling function
 def pc_scaling(L, pc_inf, a, nu):
     '''
@@ -142,5 +143,124 @@ def pc_scaling(L, pc_inf, a, nu):
     '''
     return pc_inf + a * L**(-nu)
 
+# 
 
-# voronoi objects sizes for finding infinite system scaling pc
+def extract_oblique_cut(data: pd.DataFrame, ps_vals: np.ndarray, pb_vals: np.ndarray, tol=1e-6):
+    """
+    Given a list of (p_site, p_bond) values, find matching time values in the data.
+    A small tolerance is used in case of floating point mismatch.
+    """
+    times = []
+    for ps, pb in zip(ps_vals, pb_vals):
+        match = data[(np.abs(data['P_site'] - ps) < tol) & (np.abs(data['P_bond'] - pb) < tol)]
+        if not match.empty:
+            times.append(match['time'].values[0])
+        else:
+            times.append(np.nan)  # or raise warning
+    return np.array(times)
+
+def sigma(shift: float, folder_path:str, save_path:str, tessellation:str,n,m) -> None :
+
+    
+    # Load your data
+    data = pd.read_csv(folder_path + 'datos.csv')
+
+    # Define the diagonal cut line
+    ps_range_complete = np.linspace(0, 1., 200)
+    #print(ps_range_complete)
+    pb_range_complete = ps_range_complete  # 45° cut: p_bond = p_site
+
+    # Extract time values along the diagonal
+    times_on_diagonal = extract_oblique_cut(data, ps_range_complete, pb_range_complete)
+
+    # Filter based of lattest times
+    mask =  times_on_diagonal > (times_on_diagonal[-1] + shift) 
+    pb_range = pb_range_complete[mask]
+    ps_range = ps_range_complete[mask]
+    times_range = times_on_diagonal[mask]
+
+    # Execute simulations and store results
+    #known endpoints
+    ps0, pb0 = ps_range[0], pb_range[0]
+    ps1, pb1 = ps_range[-1], pb_range[-1]
+
+    # Compute slope and intercept
+    slope = (pb1 - pb0) / (ps1 - ps0)
+    b = pb0 - slope * ps0
+
+    # Choose as many ps_fine values as you like
+    ps_fine = np.linspace(ps0, ps1, n)
+
+    # Compute the corresponding pb_fine EXACTLY on that line
+    pb_fine = slope * ps_fine + b
+
+    # Run your simulations
+
+    # Fill points with simulations
+    
+
+    new_times = np.zeros(n)
+    for i, (ps, pb) in enumerate(zip(ps_fine, pb_fine)):
+        pivot_times = np.zeros(m)
+        for j in range(m):
+            if tessellation == 'squared':
+
+                matrix = np.ones((100,100))
+                matrix[50,50] = 2
+                forest = simulation.squareForest(burningThreshold=1,occuProba=1 ,initialForest=matrix)
+
+            elif tessellation == 'tiangular':
+            
+                matrix = np.ones((100,100))
+                matrix[50,50] = 2
+                forest = simulation.triangularForest(burningThreshold=1,occuProba=1 ,initialForest=matrix)
+
+            elif tessellation == 'hexagonal':
+                matrix = np.ones((100,100))
+                matrix[50,50] = 2
+                forest = simulation.heaxgonalForest(burningThreshold=1,occuProba=1 ,initialForest=matrix)
+
+            elif tessellation == 'voronoi':
+                nPoints = 100*100
+                points = np.random.rand(nPoints, 2)
+                vor = Voronoi(points)
+
+                forest = voronoi_fire.voronoiFire(1,1,vor,1)
+
+            pivot_times[j] = forest.propagateFire(ps, pb)
+        
+        new_times[i] = np.mean(pivot_times)
+
+    #print(forest.propagateFire(1, 0.8))
+
+    # Execute fit to extract distribution width
+
+    # Compute the x_data for fit over the oblique line
+    # SHift them so they start from 0
+    delta_ps = ps_fine - ps_fine[0]
+    delta_pb = pb_fine - pb_fine[0]
+
+    oblique_data   = np.sqrt(delta_ps**2 + delta_pb**2)
+    #popt, pcov = curve_fit(gaussian, oblique_data, new_times, maxfev=5000)
+
+    #print(popt)
+
+    # Plot
+    plt.plot(oblique_data, new_times, 'o',  label='simulations')
+    #plt.plot(oblique_data, gaussian(oblique_data, *popt), '-', label='Gaussian fit')
+    plt.xlabel('P_site = P_bond')
+    plt.ylabel('Time')
+    plt.title('Time along 45° diagonal cut')
+    plt.grid(True)
+    plt.legend()
+    plt.savefig(save_path + 'oblique_cut_' + tessellation + '_1.png')
+
+
+    
+    
+
+ 
+
+
+
+

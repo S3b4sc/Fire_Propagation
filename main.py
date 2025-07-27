@@ -1,11 +1,12 @@
 from classes.regular import simulation
 from classes.voronoi import voronoi_fire
-from scripts.utils import infinite_pc
+from scripts.utils import infinite_pc, sigma
 
 from classes.fit import fitting
 
 from scripts.menu import menu
 import numpy as np
+import pandas as pd
 from scipy.spatial import Voronoi
 
 from scripts.routes import routes_dict, data_route
@@ -90,6 +91,7 @@ if __name__ == '__main__':
             route = routes_dict['squared'] +  name
             forest = simulation.squareForest(burningThreshold=0.95,occuProba=0.95 ,initialForest=matrix, saveHistoricalPropagation=True)
             forest.propagationTime(route,n,m, matrix)
+            #print(forest.propagateFire(1, 0.8))
             
             
         elif tessellation == 2:
@@ -243,7 +245,7 @@ if __name__ == '__main__':
         if tessellation == 1:
             
             folder_path = data_route['squared']
-            file_name = "datos_alta_resolucion.csv"
+            file_name = "datos.csv"
             name = 'squaredCompareProbabilities_alta_resolucion'
             imagePath = routes_dict['squared'] + name
             propTimeThreshold = 150
@@ -255,7 +257,7 @@ if __name__ == '__main__':
         elif tessellation == 2:
             
             folder_path = data_route['triangular']
-            file_name = "datos_alta_resolucion.csv"
+            file_name = "datos.csv"
             name = 'triangularCompareProbabilities_alta_resolucion'
             imagePath = routes_dict['triangular'] + name
             propTimeThreshold = 215
@@ -266,7 +268,7 @@ if __name__ == '__main__':
         elif tessellation == 3:
             
             folder_path = data_route['hexagon']
-            file_name = "datos_alta_resolucion.csv"
+            file_name = "datos.csv"
             name = 'hexagonalCompareProbabilities_alta_resolucion'
             imagePath = routes_dict['hexagon'] + name
             propTimeThreshold = 150
@@ -279,7 +281,7 @@ if __name__ == '__main__':
             points = np.random.rand(nPoints, 2)
             vor = Voronoi(points)
             folder_path = data_route['voronoi']
-            file_name = "datos_alta_resolucion.csv"
+            file_name = "datos.csv"
             propTimeThreshold = 150
             
 
@@ -500,3 +502,36 @@ if __name__ == '__main__':
                         save_route=routes_dict['voronoi'],
                         fire_args=info,
                         pc_args=pc_fit_args, tessellation='voronoi')
+            
+    elif usrChoice == 10:
+
+        try:
+            tessellation = int(input("Choose one: \n1   Squared\n2  Triangular\n3    Hexagonal\n4   Voronoi\n"))
+        except:
+            print('Not a valid option.')
+
+        n = 30  # points
+        m = 50  # Repetition
+        if tessellation == 1:
+            shift = 5
+            folder_path = './data/squared/'
+            save_path  = './graphs/squared/'
+            sigma(shift, folder_path, save_path, 'squared',n,m)
+
+        elif tessellation == 2:
+            shift = 0
+            folder_path = './data/triangular/'
+            save_path  = './graphs/triangular/'
+            sigma(shift, folder_path, save_path, 'triangular',n,m)
+
+        elif tessellation == 3:
+            shift = 0
+            folder_path = './data/hexagonal/'
+            save_path  = './graphs/hexagonal/'
+            sigma(shift, folder_path, save_path, 'hexagonal',n,m)
+
+        elif tessellation == 4:
+            shift = 0
+            folder_path = './data/voronoi/'
+            save_path  = './graphs/voronoi/'
+            sigma(shift, folder_path, save_path, 'voronoi',n,m)

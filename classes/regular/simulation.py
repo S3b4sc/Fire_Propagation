@@ -51,7 +51,6 @@ class forestFire():
             print('The forest does not have burning trees')
         else:
             self.historicalFirePropagation, steps, self.forest = fire.propagate_fire_cpp(self.forest.astype(np.int32), pb, self.neighbours, self.neighboursBoolTensor.astype(np.int32), True)
-            
             return steps
         
 
@@ -489,7 +488,8 @@ class forestFire():
     def compareBondSite(self,resolution:int, imagePath,
                         folder_path, file_name, matrix,
                         tesellation_type:str,
-                        propTimeThreshold:int=120):
+                        propTimeThreshold:int=120, fit:bool=False):
+        
         # Verificar si la carpeta existe, si no, crearla
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
@@ -539,7 +539,7 @@ class forestFire():
 
         # Crear un mapa de calor
         print("Generando mapa de calor...")
-        heatmap_data = data.pivot_table(index='P_bond', columns='P_site', values='time')
+        heatmap_data = data.pivot_table(index='P_site', columns='P_bond', values='time')
         plt.figure(figsize=(10, 8))
         ax = sns.heatmap(heatmap_data, cmap='viridis', cbar_kws={'label': '\nTime (a.u)'})
 
@@ -556,19 +556,20 @@ class forestFire():
         ax.invert_yaxis()
         ax.set_aspect(1)
         
-        # Execute the fit
-        function,ps,pb,popt = expFit(data,propTimeThreshold)
-        # Plot results
-        x = np.linspace(0,1,100)
-        x_indices = x * (heatmap_data.shape[1] - 1)  # Scale x values to heatmap indices
-        y_indices = function(x,*popt) * (heatmap_data.shape[0] - 1)  # Scale y values to heatmap indices
+        if fit: 
+            # Execute the fit
+            function,ps,pb,popt = expFit(data,propTimeThreshold)
+            # Plot results
+            x = np.linspace(0,1,100)
+            x_indices = x * (heatmap_data.shape[1] - 1)  # Scale x values to heatmap indices
+            y_indices = function(x,*popt) * (heatmap_data.shape[0] - 1)  # Scale y values to heatmap indices
 
-        ax.plot(x_indices, y_indices,'r-',label='fit: $%5.1f \\, exp( - %5.1f  P_{occupancy}) + %5.1f$' % tuple(popt), zorder=10)
+            ax.plot(x_indices, y_indices,'r-',label='fit: $%5.1f \\, exp( - %5.1f  P_{occupancy}) + %5.1f$' % tuple(popt), zorder=10)
 
         plt.title(f"Comparative heat map for {tesellation_type} tesellation", size=20)
         plt.xlabel(r"$P_{occupancy}$", size=15)
         plt.ylabel(r"$P_{spread}$", size=15)
-        plt.legend(loc='upper left', fontsize=13)
+        #plt.legend(loc='upper left', fontsize=13)
         plt.tight_layout()
         plt.savefig(imagePath+'.png', format='png')
         #plt.show()

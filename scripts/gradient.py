@@ -141,11 +141,89 @@ def main(file_path:str, file_name:str) -> None:
     # Plot heatmap and histogram
     #plot_heatmap_and_histogram(xi, yi, normalized_gradient)
 
+# -------------------------------------------------------------------------------------------------------
+
+# Function to make a regression over time
+def train_time_rf_model(file_path, file_name):
+    # Load the raw data
+    data = pd.read_csv(file_path + file_name)
+
+    # Extract features and target
+    X = data[['P_site', 'P_bond']].values
+    y = data['time'].values
+
+    # Split into train/test
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
+
+    # Train Random Forest
+    model = RandomForestRegressor(n_estimators=100, random_state=42)
+    model.fit(X_train, y_train)
+
+    # Evaluate
+    y_pred = model.predict(X_test)
+    print("MSE:", mean_squared_error(y_test, y_pred))
+
+    # Save model
+    joblib.dump(model, file_path + 'rf_time_predictor.pkl', compress=('zlib', 3))
+
+
+def plot_real_time_vs_predicted(file_path, file_name, grid_size=100):
+    """Compare interpolated true time vs. predicted time using RF model"""
+    
+    # Load original data
+    data = pd.read_csv(file_path + file_name)
+    x = data['P_site'].values
+    y = data['P_bond'].values
+    z = data['time'].values
+
+    # Interpolate onto grid
+    xi = np.linspace(x.min(), x.max(), grid_size)
+    yi = np.linspace(y.min(), y.max(), grid_size)
+    xi, yi = np.meshgrid(xi, yi)
+    zi = griddata((x, y), z, (xi, yi), method='cubic')  # interpolated true time
+
+    # Load trained model
+    model = joblib.load(file_path + 'rf_time_predictor.pkl')
+
+    # Prepare features and predict
+    features = np.column_stack((xi.ravel(), yi.ravel()))
+    predicted_time = model.predict(features).reshape(xi.shape)
+
+    # Plotting
+    fig = plt.figure(figsize=(12, 6))
+
+    # True time surface
+    ax1 = fig.add_subplot(121, projection='3d')
+    ax1.plot_surface(xi, yi, zi, cmap='viridis', edgecolor='none')
+    ax1.set_title("True Time Surface (Interpolated)")
+    ax1.set_xlabel("P_site")
+    ax1.set_ylabel("P_bond")
+    ax1.set_zlabel("Time")
+
+    # Predicted time surface
+    ax2 = fig.add_subplot(122, projection='3d')
+    ax2.plot_surface(xi, yi, predicted_time, cmap='plasma', edgecolor='none')
+    ax2.set_title("Predicted Time Surface (RF Model)")
+    ax2.set_xlabel("P_site")
+    ax2.set_ylabel("P_bond")
+    ax2.set_zlabel("Time")
+
+    #plt.tight_layout()
+    plt.savefig(file_path + 'predicted_vs_true_time.png')
+
 # Example usage
 if __name__ == "__main__":
-    file_path = r'data/voronoi/'  
+    
+    gradient = False
+    file_path = r'../data/voronoi/'  
     file_name = 'datos.csv'
-    main(file_path, file_name)
+
+    if gradient:
+        main(file_path, file_name)
+    else:   
+        train_time_rf_model(file_path, file_name)
+        plot_real_time_vs_predicted(file_path, file_name)
+        
 
     # Load the model and plot to verify
     
