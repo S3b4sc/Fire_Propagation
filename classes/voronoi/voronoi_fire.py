@@ -383,7 +383,7 @@ class voronoiFire():
 
         # Crear un mapa de calor
         print("Generando mapa de calor...")
-        heatmap_data = data.pivot_table(index='P_site', columns='P_bond', values='time')
+        heatmap_data = data.pivot_table(index='P_bond', columns='P_site', values='time')
         plt.figure(figsize=(10, 8))
         ax = sns.heatmap(heatmap_data, cmap='viridis', cbar_kws={'label': '\nTime (a.u)'})
 
@@ -410,7 +410,7 @@ class voronoiFire():
             y_indices = function(x,*popt) * (heatmap_data.shape[0] - 1)  # Scale y values to heatmap indices
 
             ax.plot(x_indices, y_indices,'r-',label='fit: %5.3f exp( - %5.3f p_site) + %5.3f' % tuple(popt), zorder=10)
-        plt.legend()
+        #plt.legend()
         plt.savefig(imagePath+'.png', format='png')
 
 

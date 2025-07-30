@@ -59,14 +59,14 @@ if __name__ == '__main__':
         elif tessellation == 4:
             # Create Voronoi diagram
             #np.random.seed(23) 
-            nPoints = 25*25
+            nPoints = 100*100
             points = np.random.rand(nPoints, 2)
             vor = Voronoi(points)
             
             name = 'voronoiAnimation'
             route = routes_dict['voronoi'] + name
 
-            voronoi = voronoi_fire.voronoiFire(0.5,0.95,vor,1)
+            voronoi = voronoi_fire.voronoiFire(0.45,0.96,vor,1)
             voronoi.animate(route)
             
         else:
@@ -510,28 +510,32 @@ if __name__ == '__main__':
         except:
             print('Not a valid option.')
 
-        n = 30  # points
-        m = 50  # Repetition
+        n = 110  # points
+        m = 120  # Repetition
         if tessellation == 1:
-            shift = 5
+            shift = 0
             folder_path = './data/squared/'
             save_path  = './graphs/squared/'
-            sigma(shift, folder_path, save_path, 'squared',n,m)
+            sigma(shift, folder_path, save_path, 'squared',n,m,vertical=False)
 
         elif tessellation == 2:
             shift = 0
             folder_path = './data/triangular/'
             save_path  = './graphs/triangular/'
-            sigma(shift, folder_path, save_path, 'triangular',n,m)
+            sigma(shift, folder_path, save_path, 'triangular',n,m, vertical=False)
 
         elif tessellation == 3:
             shift = 0
             folder_path = './data/hexagonal/'
             save_path  = './graphs/hexagonal/'
-            sigma(shift, folder_path, save_path, 'hexagonal',n,m)
+            sigma(shift, folder_path, save_path, 'hexagonal',n,m, vertical=False)
 
         elif tessellation == 4:
-            shift = 0
+            shift = -40
             folder_path = './data/voronoi/'
             save_path  = './graphs/voronoi/'
-            sigma(shift, folder_path, save_path, 'voronoi',n,m)
+            sigma(shift, folder_path, save_path, 'voronoi',n,m, vertical=False)
+
+            # The first cut is at 45 degrees oblique line
+            # the upper cut is taken pb = 1  (horizontal)
+            # The lower cut is taken ps = 1  (vertical)

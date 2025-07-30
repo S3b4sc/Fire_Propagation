@@ -12,6 +12,13 @@ def menu():
     3   Determine the percolation threshold P_c
     4   Find the critical exponent for infinite cluster
     5   Compare probability bond vs probability site
+    6   ??
+    7   Exp fit for compare bond site
+    8   Compute gamma exponent (suceptibility)
+    9   Compute infinite system pc
+    10  Compute prop time sigma
+
+    ----------------------------------------------------------------------------------------
     '''
     
     try:

@@ -539,7 +539,7 @@ class forestFire():
 
         # Crear un mapa de calor
         print("Generando mapa de calor...")
-        heatmap_data = data.pivot_table(index='P_site', columns='P_bond', values='time')
+        heatmap_data = data.pivot_table(index='P_bond', columns='P_site', values='time')
         plt.figure(figsize=(10, 8))
         ax = sns.heatmap(heatmap_data, cmap='viridis', cbar_kws={'label': '\nTime (a.u)'})
 
@@ -551,6 +551,7 @@ class forestFire():
         ticks = np.arange(0, 1.1, 0.1)  # De 0 a 1 en pasos de 0.1
         ax.set_xticks(np.linspace(0, heatmap_data.shape[1] - 1, len(ticks)))  # Ticks ajustados al tamaño de la matriz
         ax.set_yticks(np.linspace(0, heatmap_data.shape[0] - 1, len(ticks)))
+
         ax.set_xticklabels([f"{tick:.1f}" for tick in ticks])
         ax.set_yticklabels([f"{tick:.1f}" for tick in ticks])
         ax.invert_yaxis()
