@@ -13,6 +13,7 @@ from classes.regular.auxiliarfunc import percolation_check, Apply_occupation_pro
 from classes.fit.fitting import expFit, fit_best_model, model_dict
 
 import classes.regular.fire_plus as fire
+import classes.regular.fire_plus_loop as fire_loop
 
 from numba import njit
 
@@ -50,7 +51,8 @@ class forestFire():
         if np.sum(self.forest == 2) == 0:
             print('The forest does not have burning trees')
         else:
-            self.historicalFirePropagation, steps, self.forest = fire.propagate_fire_cpp(self.forest.astype(np.int32), pb, self.neighbours, self.neighboursBoolTensor.astype(np.int32), True)
+            #self.historicalFirePropagation, steps, self.forest = fire.propagate_fire_cpp(self.forest.astype(np.int32), pb, self.neighbours, self.neighboursBoolTensor.astype(np.int32), True)
+            self.historicalFirePropagation, steps = fire_loop.propagate_fire_cpp(self.forest.astype(np.int32), pb, self.neighbours, self.neighboursBoolTensor.astype(np.int32), True)
             return steps
         
 
@@ -627,10 +629,16 @@ class squareForest(forestFire):
         if (self.saveHistoricalPropagation):
             
             print('Starting simulation, wait a sec...')
+            import time
+
+            start = time.time()
             # Simulate fire
             _ = self.propagateFire(self.occuProba,self.burningThreshold)
-
+            end = time.time()
             print('Simulation has finished. Initializing animation...')
+            end = time.time()
+            print(f"Simulation took {end - start:.4f} seconds")
+            
             teselado.squareAnimationPlot(fileName,
                                          self.historicalFirePropagation,
                                          interval,
