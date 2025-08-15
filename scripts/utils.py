@@ -33,6 +33,8 @@ def infinite_pc(l: List[int], save_route:str, fire_args: Dict[str,Any], pc_args:
     #pc_values = np.array([0.533,0.5309,0.527, 0.5286,0.5227,0.5207,0.525,0.523,0.52,0.524,0.524,0.521,0.521,0.519,0.5219]) - 0.02
     #pc_values = np.array([0.5011,0.5058,0.5099, 0.5011,0.5058,0.4994,0.5087,0.5034,0.5046,0.5034,0.5034,0.5046,0.499,0.5058,0.5046])    # Squared 
     #pc_values = np.array([0.6866907724050582,00.6859349145063431,0.6821760536046251, 0.6769483769483771,0.6762701476987192,0.6753692467978183,0.6726216011930298,0.6721435721435722,0.6721435721435722,0.6689076831933976,0.6689853118424547,0.6687074829931974,0.667181046352474,0.6621030785887929,0.666185050356479])    # Triangular 
+    #pc_values = np.array([0.51645,0.512847,0.512968,0.511546,0.50986,0.50776,0.509264,0.506862])
+    #pc_error = np.zeros([len(l)])
 
     # Loop through each size in the list
     for i,size in enumerate(l):
@@ -82,19 +84,18 @@ def infinite_pc(l: List[int], save_route:str, fire_args: Dict[str,Any], pc_args:
         
     # Execute the fit using curve fit to estimate pc_inf, a and nu
     try:
-        popt, pcov = curve_fit(pc_scaling, np.array(l), pc_values, np.array([0.5,5,1]))
+        popt, pcov = curve_fit(pc_scaling, np.array(l), pc_values, np.array([0.5,20,1.3]),maxfev=20000) #------
         # Extract parameters
         pc_inf, a_fit, nu_fit= popt
         print(f"Estimated pc(∞) = {pc_inf:.5f}")
         print(f"Estimated ν = {nu_fit:.5f}")
         print(f"Estimated a = {a_fit:.5f}")
         L_inv_nu = np.array(l)**(-1/nu_fit)
-        #plt.scatter(L_inv_nu, pc_values, label="Simulation data")
+        plt.scatter(L_inv_nu, pc_values, label="Simulation data")
 
         # Plotting
         invL_nu = 1 / np.array(l)**nu_fit
-        fit_line = pc_scaling(np.array(l), pc_inf, a_fit, nu_fit)
-
+        fit_line = pc_scaling(np.array(l), pc_inf, nu_fit) #------
         plt.figure(figsize=(6, 5))
 
         # Datos con barras de error
@@ -103,6 +104,7 @@ def infinite_pc(l: List[int], save_route:str, fire_args: Dict[str,Any], pc_args:
 
         # Curva ajustada
         plt.plot(invL_nu, fit_line, '-', color='red', label="Fit")
+        #plt.plot(invL_nu,pc_scaling(np.array(l), 0.5,20,1.33))
 
         # Ejes y texto
         plt.xlabel(r"$L^{-1/\nu}$", fontsize=14)
@@ -126,18 +128,19 @@ def infinite_pc(l: List[int], save_route:str, fire_args: Dict[str,Any], pc_args:
         plt.tight_layout()
         plt.savefig(save_route + pc_args['fixed'] + str(pc_args['fixed_value']) + '_pc_infinite_systems.png', dpi=300)
 
+        
+    except:
         # Crear DataFrame con los datos
         df = pd.DataFrame({
             'L': l,
-            '1/L^nu': invL_nu,
             'pc(L)': pc_values,
             'pc_error': pc_error
         })
         
-        # Guardar como CSV
-        df.to_csv(route, index=False)
-    except:
         print('fit not converged.')
+        # Guardar como CSV
+        df.to_csv(save_route + 'pc_scaling_data.csv', index=False)
+        
     
     
 # Define scaling function
@@ -213,8 +216,8 @@ def sigma(
         for j in range(m_full):
             if tessellation == 'squared':
 
-                matrix = np.ones((500,500))
-                matrix[250,250] = 2
+                matrix = np.ones((700,700))
+                matrix[350,350] = 2
                 forest = simulation.squareForest(burningThreshold=1,occuProba=1 ,initialForest=matrix)
                 pivot_times[j] = forest.propagateFire(ps, pb)
 
@@ -269,7 +272,7 @@ def sigma(
     g = gradient_smoothed(raw_times, dx=1/n_full, window=11, polyorder=2)
 
     # Pick fractional tolerance
-    tol_frac = 0.02   # 10%
+    tol_frac = 0.01   # 10%
 
     # Compute the absolute‐gradient threshold
     grad_thresh = tol_frac * np.max(np.abs(g))
@@ -324,113 +327,112 @@ def sigma(
 
     # Fill points with simulations
     
+    new_times = np.zeros(n_refine)
+    new_errors = np.zeros(n_refine)
+    for i, (ps, pb) in enumerate(zip(ps_fine, pb_fine)):
+        pivot_times = np.zeros(m_refine)
+        for j in range(m_refine):
+            if tessellation == 'squared':
 
-    #new_times = np.zeros(n_refine)
-    #new_erros = np.zeros(n_refine)
-    #for i, (ps, pb) in enumerate(zip(ps_fine, pb_fine)):
-    #    pivot_times = np.zeros(m_refine)
-    #    for j in range(m_refine):
-    #        if tessellation == 'squared':
-#
-    #            matrix = np.ones((500,500))
-    #            matrix[250,250] = 2
-    #            forest = simulation.squareForest(burningThreshold=1,occuProba=1 ,initialForest=matrix)
-    #            pivot_times[j] = forest.propagateFire(ps, pb)
-#
-    #        elif tessellation == 'triangular':
-    #        
-    #            matrix = np.ones((100,100))
-    #            matrix[50,50] = 2
-    #            forest = simulation.triangularForest(burningThreshold=1,occuProba=1 ,initialForest=matrix)
-    #            pivot_times[j] = forest.propagateFire(ps, pb)
-#
-    #        elif tessellation == 'hexagonal':
-    #            matrix = np.ones((100,100))
-    #            matrix[50,50] = 2
-    #            forest = simulation.heaxgonalForest(burningThreshold=1,occuProba=1 ,initialForest=matrix)
-    #            pivot_times[j] = forest.propagateFire(ps, pb)
-#
-    #        elif tessellation == 'voronoi':
-    #            nPoints = 100*100
-    #            points = np.random.rand(nPoints, 2)
-    #            vor = Voronoi(points)
-#
-    #            forest = voronoi_fire.voronoiFire(1,1,vor,1)
-    #            pivot_times[j] = forest.propagateFire(ps, pb, centered=True)
-    #        
-    #    
-    #    new_times[i] = np.mean(pivot_times)
-    #    new_erros[i] = np.std(pivot_times)
-    #    
-#
-    ##print(forest.propagateFire(1, 0.8))
-#
-    ## Execute fit to extract distribution width
-#
-    ## Compute the x_data for fit over the oblique line
-    ## SHift them so they start from 0
-    #delta_ps = ps_fine - ps_fine[0]
-    #delta_pb = pb_fine - pb_fine[0]
-    ##print(delta_pb[0], delta_pb[-1])
-#
-    #if find_dist:
-#
-    #    oblique_data   = np.sqrt(delta_ps**2 + delta_pb**2)
-    #    save = save_path + 'oblique_cut_' + tessellation + '_upper_fixed.png'
-    #    #popt, pcov = curve_fit(johnsonsu_pdf, oblique_data, new_times, p0=p0, maxfev = 5000)
-    #    mask2 = new_times > (final_time)
-    #    new_times =  new_times[mask2]
-    #    oblique_data = oblique_data[mask2]
-    #    new_erros = new_erros[mask2]
-    #    f = Fitter(new_times,
-    #           timeout=30)
-    #    f.fit()
-#
-    #    # Best distributions sorted by sum of squared errors (SSE)
-    #    #f.summary()
-    #    print(f.get_best())
-#
-    #    # Optional: plot
-    #    f.plot_pdf()
-    #    plt.savefig(save_path + 'oblique_cut_' + tessellation + '_1.png')
-#
-    #else:
-#
-    #    best_params = {
-    #    'a': -2.03,
-    #    'b': 1.39,
-    #    'loc': -0.00309,
-    #    'scale': 0.0189,
-    #    'A': 4,
-    #    'C': 101
-    #    }
-    #    p0 = [best_params['a'], best_params['b'], best_params['loc'], best_params['scale'], best_params['A'], best_params['C']]
-#
-#
-    #    oblique_data   = np.sqrt(delta_ps**2 + delta_pb**2)
-    #    save = save_path + 'oblique_cut_' + tessellation + '_middle_fixed_500.png'
-    #    #popt, pcov = curve_fit(johnsonsu_pdf, oblique_data, new_times, p0=p0, maxfev = 5000)
-    #    mask2 = new_times > (final_time)
-    #    new_times =  new_times[mask2]
-    #    oblique_data = oblique_data[mask2]
-    #    new_erros = new_erros[mask2]
-#
-    #    df = pd.DataFrame({
-    #    "time": new_times,
-    #    "data": oblique_data,
-    #    "error": new_erros,
-    #    "pb_fine": pb_fine,
-    #    "ps_fine": ps_fine
-    #    })
-#
-    #    # Guardar como CSV
-    #    df.to_csv("datos_filtrados.csv", index=False)        
-#
-#
-    #    plt.plot(oblique_data,new_times)
-    #    plt.savefig('try.png')
-    #    popt, pcov, fwhm, fwhm_err = fit_and_plot_johnsonsu_with_fwhm(oblique_data, new_times,new_erros, p0, save)
-#
+                matrix = np.ones((700,700))
+                matrix[350,350] = 2
+                forest = simulation.squareForest(burningThreshold=1,occuProba=1 ,initialForest=matrix)
+                pivot_times[j] = forest.propagateFire(ps, pb)
+
+            elif tessellation == 'triangular':
+            
+                matrix = np.ones((100,100))
+                matrix[50,50] = 2
+                forest = simulation.triangularForest(burningThreshold=1,occuProba=1 ,initialForest=matrix)
+                pivot_times[j] = forest.propagateFire(ps, pb)
+
+            elif tessellation == 'hexagonal':
+                matrix = np.ones((100,100))
+                matrix[50,50] = 2
+                forest = simulation.heaxgonalForest(burningThreshold=1,occuProba=1 ,initialForest=matrix)
+                pivot_times[j] = forest.propagateFire(ps, pb)
+
+            elif tessellation == 'voronoi':
+                nPoints = 100*100
+                points = np.random.rand(nPoints, 2)
+                vor = Voronoi(points)
+
+                forest = voronoi_fire.voronoiFire(1,1,vor,1)
+                pivot_times[j] = forest.propagateFire(ps, pb, centered=True)
+            
+        
+        new_times[i] = np.mean(pivot_times)
+        new_errors[i] = np.std(pivot_times)
+        
+
+    #print(forest.propagateFire(1, 0.8))
+
+    # Execute fit to extract distribution width
+
+    # Compute the x_data for fit over the oblique line
+    # SHift them so they start from 0
+    delta_ps = ps_fine - ps_fine[0]
+    delta_pb = pb_fine - pb_fine[0]
+    #print(delta_pb[0], delta_pb[-1])
+
+    if find_dist:
+
+        oblique_data   = np.sqrt(delta_ps**2 + delta_pb**2)
+        save = save_path + 'oblique_cut_' + tessellation + '_upper_fixed.png'
+        #popt, pcov = curve_fit(johnsonsu_pdf, oblique_data, new_times, p0=p0, maxfev = 5000)
+        mask2 = new_times > (final_time)
+        new_times =  new_times[mask2]
+        oblique_data = oblique_data[mask2]
+        new_errors = new_errors[mask2]
+        f = Fitter(new_times,
+               timeout=30)
+        f.fit()
+
+        # Best distributions sorted by sum of squared errors (SSE)
+        #f.summary()
+        print(f.get_best())
+
+        # Optional: plot
+        f.plot_pdf()
+        plt.savefig(save_path + 'oblique_cut_' + tessellation + '_1.png')
+
+    else:
+
+        best_params = {
+        'a': -2.03,
+        'b': 1.39,
+        'loc': -0.00309,
+        'scale': 0.0189,
+        'A': 4,
+        'C': 101
+        }
+        p0 = [best_params['a'], best_params['b'], best_params['loc'], best_params['scale'], best_params['A'], best_params['C']]
+
+
+        oblique_data   = np.sqrt(delta_ps**2 + delta_pb**2)
+        save = save_path + 'oblique_cut_' + tessellation + '_middle_fixed_700.png'
+        #popt, pcov = curve_fit(johnsonsu_pdf, oblique_data, new_times, p0=p0, maxfev = 5000)
+        mask2 = new_times > (final_time)
+        new_times =  new_times[mask2]
+        oblique_data = oblique_data[mask2]
+        new_errors = new_errors[mask2]
+
+        df = pd.DataFrame({
+        "time": new_times,
+        "data": oblique_data,
+        "error": new_errors,
+        "pb_fine": pb_fine[mask2],
+        "ps_fine": ps_fine[mask2]
+        })
+
+        # Guardar como CSV
+        df.to_csv("datos_filtrados.csv", index=False)        
+
+
+        plt.plot(oblique_data,new_times)
+        plt.savefig('try.png')
+        popt, pcov, fwhm, fwhm_err = fit_and_plot_johnsonsu_with_fwhm(oblique_data, new_times,new_errors, p0, save)
+#   
         #print(popt)
 
         # Plot

@@ -446,13 +446,13 @@ if __name__ == '__main__':
         
             pc_fit_args = {
                 'n':14,
-                'm':100,
-                'fixed':'bond',
+                'm':120,
+                'fixed':'site',
                 'fixed_value': 1,
-                'exploring_range':[0.52,0.66]
+                'exploring_range':[0.47,0.58]
             }
 
-            infinite_pc(l=[25,50,60,70,100,150,200,250,300,350,400,450,500], 
+            infinite_pc(l=[250,300,350,400,450,500,550,600], 
                         save_route=routes_dict['squared'],
                         fire_args=info,
                         pc_args=pc_fit_args, tessellation='squared')
@@ -516,7 +516,7 @@ if __name__ == '__main__':
             folder_path = './data/squared/'
             save_path  = './graphs/squared/'
             #sigma(shift, folder_path, save_path, 'squared',n,m,vertical=False)
-            sigma(folder_path,save_path,'squared',46,50,50,800,initial_guess_ps=[0.6,0.83])
+            sigma(folder_path,save_path,'squared',90,50,50,700,initial_guess_ps=[0.6,0.83])
 
         elif tessellation == 2:
             folder_path = './data/triangular/'
@@ -548,49 +548,4 @@ if __name__ == '__main__':
                                                                           p0=p0, save='try2.png')
                                                                           #save='graphs/triangular/oblique_cut_triangular_upper_fixed.png')
 
-        #pivot_times = np.zeros(800)
-#
-        #for j in range(800):
-        #    matrix = np.ones((500,500))
-        #    matrix[250,250] = 2
-        #    forest = simulation.squareForest(burningThreshold=1,occuProba=1 ,initialForest=matrix)
-        #    pivot_times[j] = forest.propagateFire(0.742, 0.742)
-#
-        #final_time = np.mean(pivot_times)
-        #error = np.std(pivot_times)
-        #print(final_time)
-        #print(error)
-
-        # New interval [,0.736,0.737,0.738,0.739,0.740,0.741,0.742] - lowest 
-        # Complete interval new inerval U new interval + old interval
-        # 0.742 -- time: 797.065      error: 574.0907273898439
-        # 0.741 -- time: 771.80375      error: 590.575973297202
-        # 0.740 -- time: 721.15875     error: 594.148723846511
-        # 0.739 -- time: 666.7725     error: 563.641744145827
-        # 0.738 -- time:612.25125     error: 539.3473538670951
-        # 0.737--  time: 520.3875  error: 495.91848860851115
-        # 0.736  --  time: 438.5075   error: 463.9455867273123
-
-        #df = pd.read_csv('datos_filtrados.csv')
-        #
-#
-        ##posx = np.array([0.736,0.737,0.738,0.739,0.740,0.741,0.742])
-        ##posy = np.array([0.736,0.737,0.738,0.739,0.740,0.741,0.742])
-        #posx = np.array([0.7386,0.7398,0.742,0.7422,0.7424,0.7426,0.7428])
-        #posy = np.array([0.7386,0.7398,0.742,0.7422,0.7424,0.7426,0.7428])
-#
-        #valores = np.array([438.5075,520.3875,612.25125,666.7725,721.15875,771.80375,797.065])
-        #errores = np.array([463.9455867273123,495.91848860851115,539.3473538670951,563.641744145827,594.148723846511,590.575973297202,574.0907273898439])
-        #new_posx = posx - posx[0]
-        #new_posy = posy - posy[0]
-#
-        ##oblique = np.sqrt(new_posx*2 + new_posy*2)
-        ##oblique = np.array[]
-#
-        #df['data'] = df['data'] + 0.015 + df['data'][1]
-#
-        ##print(oblique)
-        ##print(df['data'][:3])
-        #df.to_csv('datos_filtrados_2.csv', index=False)
-
-        
+       
