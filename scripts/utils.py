@@ -216,35 +216,35 @@ def sigma(
         for j in range(m_full):
             if tessellation == 'squared':
 
-                matrix = np.ones((700,700))
-                matrix[350,350] = 2
+                matrix = np.ones((400,400))
+                matrix[200,200] = 2
                 forest = simulation.squareForest(burningThreshold=1,occuProba=1 ,initialForest=matrix)
-                pivot_times[j] = forest.propagateFire(ps, pb)
+                pivot_times[j], entropies = forest.propagateFire(ps, pb)
 
                 if j == (m_full-1):
                     forest = simulation.squareForest(burningThreshold=1,occuProba=1 ,initialForest=matrix)
-                    final_time = forest.propagateFire(1,1)
+                    final_time, entropies = forest.propagateFire(1,1)
 
             elif tessellation == 'triangular':
             
-                matrix = np.ones((100,100))
-                matrix[50,50] = 2
+                matrix = np.ones((700,700))
+                matrix[350,350] = 2
                 forest = simulation.triangularForest(burningThreshold=1,occuProba=1 ,initialForest=matrix)
-                pivot_times[j] = forest.propagateFire(ps, pb)
+                pivot_times[j], entropies = forest.propagateFire(ps, pb)
 
                 if j == (m_full-1):
                     forest = simulation.triangularForest(burningThreshold=1,occuProba=1 ,initialForest=matrix)
-                    final_time = forest.propagateFire(1,1)
+                    final_time, entropies = forest.propagateFire(1,1)
 
             elif tessellation == 'hexagonal':
-                matrix = np.ones((500,500))
-                matrix[250,250] = 2
+                matrix = np.ones((400,400))
+                matrix[200,200] = 2
                 forest = simulation.heaxgonalForest(burningThreshold=1,occuProba=1 ,initialForest=matrix)
-                pivot_times[j] = forest.propagateFire(ps, pb)
+                pivot_times[j], entropies = forest.propagateFire(ps, pb)
 
                 if j == (m_full-1):
                     forest = simulation.heaxgonalForest(burningThreshold=1,occuProba=1 ,initialForest=matrix)
-                    final_time = forest.propagateFire(1,1)
+                    final_time, entropies = forest.propagateFire(1,1)
 
             elif tessellation == 'voronoi':
                 nPoints = 100*100
@@ -252,11 +252,11 @@ def sigma(
                 vor = Voronoi(points)
 
                 forest = voronoi_fire.voronoiFire(1,1,vor,1)
-                pivot_times[j] = forest.propagateFire(ps, pb, centered=True)
+                pivot_times[j], entropies = forest.propagateFire(ps, pb, centered=True)
 
                 if j == (m_full-1):
                     forest = voronoi_fire.voronoiFire(1,1,vor,1)
-                    final_time = forest.propagateFire(1,1)
+                    final_time, entropies = forest.propagateFire(1,1)
             
         
         raw_times[i] = np.mean(pivot_times)
@@ -329,28 +329,35 @@ def sigma(
     
     new_times = np.zeros(n_refine)
     new_errors = np.zeros(n_refine)
+    new_entropies = np.zeros((n_refine, 3))
+    new_entropy_errors = np.zeros((n_refine, 3))
+
     for i, (ps, pb) in enumerate(zip(ps_fine, pb_fine)):
         pivot_times = np.zeros(m_refine)
+        pivot_entropies = np.zeros((m_refine, 3))   # store (burned, burning, healthy) per repetition
+
         for j in range(m_refine):
             if tessellation == 'squared':
 
-                matrix = np.ones((700,700))
-                matrix[350,350] = 2
+                matrix = np.ones((400,400))
+                matrix[200,200] = 2
                 forest = simulation.squareForest(burningThreshold=1,occuProba=1 ,initialForest=matrix)
-                pivot_times[j] = forest.propagateFire(ps, pb)
+                # propagateFire returns: (propagationTime, entropies)
+                pivot_times[j], pivot_entropies[j] = forest.propagateFire(ps, pb)  # or propagateFire(ps, pb, centered=True) if needed
+
 
             elif tessellation == 'triangular':
             
-                matrix = np.ones((100,100))
-                matrix[50,50] = 2
+                matrix = np.ones((700,700))
+                matrix[350,350] = 2
                 forest = simulation.triangularForest(burningThreshold=1,occuProba=1 ,initialForest=matrix)
-                pivot_times[j] = forest.propagateFire(ps, pb)
+                pivot_times[j], pivot_entropies[j] = forest.propagateFire(ps, pb)
 
             elif tessellation == 'hexagonal':
-                matrix = np.ones((100,100))
-                matrix[50,50] = 2
+                matrix = np.ones((400,400))
+                matrix[200,200] = 2
                 forest = simulation.heaxgonalForest(burningThreshold=1,occuProba=1 ,initialForest=matrix)
-                pivot_times[j] = forest.propagateFire(ps, pb)
+                pivot_times[j], pivot_entropies[j] = forest.propagateFire(ps, pb)
 
             elif tessellation == 'voronoi':
                 nPoints = 100*100
@@ -358,12 +365,15 @@ def sigma(
                 vor = Voronoi(points)
 
                 forest = voronoi_fire.voronoiFire(1,1,vor,1)
-                pivot_times[j] = forest.propagateFire(ps, pb, centered=True)
+                pivot_times[j], entropies = forest.propagateFire(ps, pb, centered=True)
             
         
         new_times[i] = np.mean(pivot_times)
         new_errors[i] = np.std(pivot_times)
-        
+
+        new_entropies[i, :] = pivot_entropies.mean(axis=0)      # mean of the 3 entropies
+        new_entropy_errors[i, :] = pivot_entropies.std(axis=0) # std per-entropy
+
 
     #print(forest.propagateFire(1, 0.8))
 
@@ -410,7 +420,7 @@ def sigma(
 
 
         oblique_data   = np.sqrt(delta_ps**2 + delta_pb**2)
-        save = save_path + 'oblique_cut_' + tessellation + '_middle_fixed_700.png'
+        save = save_path + 'oblique_cut_' + tessellation + '_middle_700.png'
         #popt, pcov = curve_fit(johnsonsu_pdf, oblique_data, new_times, p0=p0, maxfev = 5000)
         mask2 = new_times > (final_time)
         new_times =  new_times[mask2]
@@ -422,11 +432,18 @@ def sigma(
         "data": oblique_data,
         "error": new_errors,
         "pb_fine": pb_fine[mask2],
-        "ps_fine": ps_fine[mask2]
+        "ps_fine": ps_fine[mask2],
+        "S_burned":       new_entropies[:, 0][mask2],
+        "S_burned_err":   new_entropy_errors[:, 0][mask2],
+        "S_burning":      new_entropies[:, 1][mask2],
+        "S_burning_err":  new_entropy_errors[:, 1][mask2],
+        "S_healthy":      new_entropies[:, 2][mask2],
+        "S_healthy_err":  new_entropy_errors[:, 2][mask2],
         })
 
+
         # Guardar como CSV
-        df.to_csv("datos_filtrados.csv", index=False)        
+        df.to_csv("datos_triangular_middle_700_multinomial.csv", index=False)        
 
 
         plt.plot(oblique_data,new_times)
@@ -473,7 +490,7 @@ def fit_and_plot_johnsonsu_with_fwhm(x_data, y_data, y_errors, p0, save, mc_runs
                            p0=p0, maxfev=20000, bounds=(lower_bounds, upper_bounds))
     
     a_fit, b_fit, loc_fit, scale_fit, A_fit, C_fit = popt
-    print(a_fit, b_fit, loc_fit, scale_fit, A_fit, C_fit)
+    #print(a_fit, b_fit, loc_fit, scale_fit, A_fit, C_fit)
 
     # --- 2) Fine grid & fit curve ---
     x_fine = np.linspace(x_data.min(), x_data.max(), 1000)
@@ -600,4 +617,25 @@ def draw(x_data, y_data, p0):
          
     return x_fine, y_fine,a_fit, b_fit, loc_fit, scale_fit, A_fit, C_fit
 
+def plot_entropies(csv_file):
+    # Leer CSV
+    df = pd.read_csv(csv_file)
 
+    # Graficar cada entropía con barras de error
+    plt.errorbar(df["data"], df["S_burned"], yerr=df["S_burned_err"], 
+                 label="S_burned", fmt="-o", capsize=3)
+    plt.errorbar(df["data"], df["S_burning"], yerr=df["S_burning_err"], 
+                 label="S_burning", fmt="-s", capsize=3)
+    plt.errorbar(df["data"], df["S_healthy"], yerr=df["S_healthy_err"], 
+                 label="S_healthy", fmt="-^", capsize=3)
+
+    # Estética
+    plt.xlabel('x', fontsize=12, family='serif')
+    plt.ylabel('Entropy', fontsize=12, family='serif')
+    plt.title("Entropies over time")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig('entropies.png')
+    plt.show()
+    

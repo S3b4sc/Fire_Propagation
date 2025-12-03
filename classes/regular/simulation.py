@@ -52,8 +52,9 @@ class forestFire():
             print('The forest does not have burning trees')
         else:
             #self.historicalFirePropagation, steps, self.forest = fire.propagate_fire_cpp(self.forest.astype(np.int32), pb, self.neighbours, self.neighboursBoolTensor.astype(np.int32), True)
-            self.historicalFirePropagation, steps = fire_loop.propagate_fire_cpp(self.forest.astype(np.int32), pb, self.neighbours, self.neighboursBoolTensor.astype(np.int32), True)
-            return steps
+            self.historicalFirePropagation, steps, entropies = fire_loop.propagate_fire_cpp(self.forest.astype(np.int32), pb, self.neighbours, self.neighboursBoolTensor.astype(np.int32), True, True)
+            self.forest = self.historicalFirePropagation[-1].copy()
+            return steps, entropies
         
 
     #-------------------------------------------------------------------------------------------------
@@ -80,7 +81,7 @@ class forestFire():
             #self.burningThreshold = p
             for j in range(m):
                 self.forest = np.copy(matrix)
-                finalTimes[i,j] = self.propagateFire(1,p)
+                finalTimes[i,j],_ = self.propagateFire(1,p)
             
             meanFinaltimes[i] = np.mean(finalTimes[i,:])
             meanFinaltimesStd[i] = np.std(finalTimes[i,:])
@@ -178,9 +179,9 @@ class forestFire():
                 for s in range(m):
                     self.forest = matrix.copy()
                     if fixed == 'bond':
-                        lista[s] = self.propagateFire(p,fixed_value)
+                        lista[s],_ = self.propagateFire(p,fixed_value)
                     else:
-                        lista[s] = self.propagateFire(fixed_value,p)
+                        lista[s],_ = self.propagateFire(fixed_value,p)
                 times[p_index] = np.mean(lista)
             
             pivot = probalities[np.argmax(times)]
@@ -218,10 +219,10 @@ class forestFire():
                 # If fixed is bond we compute the p site critical value
                 
                 if fixed == 'bond':
-                    t = self.propagateFire(p, fixed_value)
+                    t,_ = self.propagateFire(p, fixed_value)
                 # If not, we calculate the p bond critical value
                 else:
-                    t = self.propagateFire(fixed_value,p)
+                    t,_ = self.propagateFire(fixed_value,p)
 
                 results[i,j] = t
                 
@@ -243,10 +244,10 @@ class forestFire():
                 self.forest = np.copy(matrix)
                 # If fixed is bond we compute the p site critical value
                 if fixed == 'bond':
-                    t = self.propagateFire(p, fixed_value)
+                    t,_ = self.propagateFire(p, fixed_value)
                 # If not, we calculate the p bond critical value
                 else:
-                    t = self.propagateFire(fixed_value,p)
+                    t,_ = self.propagateFire(fixed_value,p)
 
                 fit_data_raw[i,j] = t
 
@@ -522,7 +523,7 @@ class forestFire():
                     times_for_average = np.ones(n_iter, dtype=int)
                     for i in range(n_iter):
                         self.forest = np.copy(matrix)
-                        times_for_average[i] = self.propagateFire(ps,pb)
+                        times_for_average[i],_ = self.propagateFire(ps,pb)
                     time[count] = np.mean(times_for_average)
                     count += 1
                 print(ps)
@@ -633,7 +634,9 @@ class squareForest(forestFire):
 
             start = time.time()
             # Simulate fire
-            _ = self.propagateFire(self.occuProba,self.burningThreshold)
+            _, entropy = self.propagateFire(self.occuProba,self.burningThreshold)
+            print(entropy.shape)
+            print(type(entropy))
             end = time.time()
             print('Simulation has finished. Initializing animation...')
             end = time.time()

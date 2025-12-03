@@ -25,3 +25,4 @@ setup(
     cmdclass={"build_ext": build_ext},
     zip_safe=False,
 )
+# python3 setup_fire_loop.py build_ext --inplace

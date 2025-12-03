@@ -17,8 +17,8 @@ import time
 
 if __name__ == '__main__':
     usrChoice = menu()
-    matrix = np.ones((500,500))
-    matrix[250,250] = 2
+    matrix = np.ones((50,50))
+    matrix[25,25] = 2
     #os.environ["QT_QPA_PLATFORM"] = "wayland"
   
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  
@@ -31,7 +31,7 @@ if __name__ == '__main__':
             
         if tessellation == 1:
             
-            name = 'squaredAnimation_test'
+            name = 'squaredAnimation'
             route = routes_dict['squared'] +  name
             forest = simulation.squareForest(burningThreshold=0.53,occuProba=1 ,initialForest=matrix, saveHistoricalPropagation=True)
             
@@ -510,42 +510,44 @@ if __name__ == '__main__':
         except:
             print('Not a valid option.')
 
-        n = 110  # points
-        m = 120  # Repetition
         if tessellation == 1:
             folder_path = './data/squared/'
             save_path  = './graphs/squared/'
             #sigma(shift, folder_path, save_path, 'squared',n,m,vertical=False)
-            sigma(folder_path,save_path,'squared',90,50,50,700,initial_guess_ps=[0.6,0.83])
+            sigma(folder_path,save_path,'squared',120,50,60,500,initial_guess_ps=[0.63,0.83])
 
         elif tessellation == 2:
             folder_path = './data/triangular/'
             save_path  = './graphs/triangular/'
-            sigma(folder_path,save_path,'triangular',100,70,80,2500,initial_guess_ps=[0.5,0.95])
+            sigma(folder_path,save_path,'triangular',90,50,50,600,initial_guess_ps=[0.73,0.87])
 
         elif tessellation == 3:
             folder_path = './data/hexagonal/'
             save_path  = './graphs/hexagonal/'
-            sigma(folder_path,save_path,'hexagonal',70,60,100,200,initial_guess_ps=[0.25,0.65], vertical=True)
+            sigma(folder_path,save_path,'hexagonal',110,50,50,700,initial_guess_ps=[0.55,0.83])
 
         elif tessellation == 4:
             folder_path = './data/voronoi/'
             save_path  = './graphs/voronoi/'
             sigma(folder_path,save_path,'voronoi',40,60,60,180,initial_guess_ps=[0.5,1])
 
-            # The first cut is at 45 degrees oblique line
+            # The first cut is at45 degrees oblique line
             # the upper cut is taken pb = 1  (horizontal)
             # The lower cut is taken ps = 1  (vertical)
     elif usrChoice == 11:
         from scripts.utils import fit_and_plot_johnsonsu_with_fwhm
         
-        p0 = [2, 1, 0.035, 0.02, 100, 100]
+        #p0 = [2, 1, 0.035, 0.02, 100, 100]
+#
+        #pd = pd.read_csv('datos_filtrados_2.csv')
+        #popt, pcov, fwhm_nom, fwhm_err = fit_and_plot_johnsonsu_with_fwhm(pd['data'].values,
+        #                                                                  pd['time'].values,
+        #                                                                   pd['error'].values,
+        #                                                                  p0=p0, save='try2.png')
+        #                                                                  #save='graphs/triangular/oblique_cut_triangular_upper_fixed.png')
 
-        pd = pd.read_csv('datos_filtrados_2.csv')
-        popt, pcov, fwhm_nom, fwhm_err = fit_and_plot_johnsonsu_with_fwhm(pd['data'].values,
-                                                                          pd['time'].values,
-                                                                          pd['error'].values,
-                                                                          p0=p0, save='try2.png')
-                                                                          #save='graphs/triangular/oblique_cut_triangular_upper_fixed.png')
+        from scripts.utils import plot_entropies
+        plot_entropies('datos_hexagonal_500_multinomial.csv')
+
 
        
